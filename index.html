@@ -3,14 +3,23 @@
 <head>
 <script type="text/javascript">
 class Cursor {
-    url = "cmudict-0.7b"
+    url = "https://raw.githubusercontent.com/Alexir/CMUdict/master/cmudict-0.7b"
+    local = "cmudict-0.7b"
     lexicon = 125770
 
     #db;
     constructor() {
+        this.create()
+    }
+
+    create() {
         const request = indexedDB.open("words", 1);
-        let status;
-        this.loaded = new Promise((resolve, reject) => status = resolve)
+        let done;
+        this.loading = new Promise((resolve, reject) => done = resolve)
+        this.loaded = new Promise((resolve, reject) => this.status = s => {
+            this.status = s => {}
+            resolve(s)
+        })
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result
@@ -24,16 +33,33 @@ class Cursor {
             this.#db = event.target.result
             const tx = this.#db.transaction("status", "readonly")
             const store = tx.objectStore("status")
-            store.get("loaded").onsuccess = event => {
-                status(event.target.result.value)
-            }
+            store.get("loaded").onsuccess = (async function(event) {
+                const res = event.target.result.value
+                const ws = await this.remoteAvailable
+                if (res || ws) this.status(res)
+                done(res)
+            }).bind(this)
         }
     }
 
-    load(progress = () => {}, storing = () => {}) {
+    async clear() {
+        return new Promise((resolve, reject) => {
+            this.#db.close()
+            const tx = indexedDB.deleteDatabase("words")
+            tx.onsuccess = () => {
+                this.create()
+                resolve()
+            }
+            tx.onblocked = tx.onerror = e => {
+                reject(e.target.error)
+            }
+        })
+    }
+
+    async load(progress = () => {}, storing = () => {}) {
         const db = this.#db, lexicon = this.lexicon, commits = [];
         console.info("populating pronunciation db")
-        return fetch(this.url)
+        return fetch((await this.remoteAvailable) ? this.local : this.url)
             .then((response) => {
                 if (!response.ok) {
                     reject(response)
@@ -63,10 +89,12 @@ class Cursor {
                         if (word !== prev) {
                             if (prev) {
                                 commits.push(new Promise((resolve, reject) => {
-                                    store.add({
+                                    const op = store.add({
                                         word: prev,
                                         pronunciation: existing
-                                    }).onsuccess = resolve
+                                    });
+                                    op.onsuccess = resolve
+                                    op.onerror = reject
                                 }))
                                 existing = []
                                 total++
@@ -85,10 +113,12 @@ class Cursor {
                         return pump()
                     }
                     commits.push(new Promise((resolve, reject) => {
-                        store.add({
+                        const op = store.add({
                             word: prev,
                             pronunciation: existing
-                        }).onsuccess = resolve
+                        });
+                        op.onsuccess = resolve
+                        op.onerror = reject
                     }))
                     console.assert(++total === lexicon) // TODO
                     console.info("pronunciation db downloaded")
@@ -103,6 +133,7 @@ class Cursor {
                 const store = tx.objectStore("status");
                 store.put({ id: "loaded", value: true });
                 this.loaded = new Promise((resolve, reject) => resolve(true))
+                this.status(true)
             }).bind(this))
     }
 
@@ -140,6 +171,14 @@ class Cursor {
 
     reformatRemote(response) {
         return response.length === 0 ? undefined : response.map(x => x[2])
+    }
+
+    get remoteAvailable() {
+        return new Promise((resolve, reject) => {
+            const f = () => resolve("ws_available" in window)
+            if (document.readyState !== "loading") f()
+            else document.addEventListener("load", f)
+        })
     }
 
     async lookup(query) {
@@ -433,25 +472,41 @@ window.addEventListener("load", async function() {
     ed = new DoubleSpaced(dict, pre)
     focusCallback()
     const status = document.getElementById("load-status")
-    if (await dict.loaded) status.innerText = "local"
-    else {
-        status.innerText = "remote"
-        const button = document.getElementById("load-dict")
-        button.style.display = "initial"
-        button.addEventListener("click", e => {
-            button.style.display = "none"
-            status.innerText = "being downloaded"
-            dict.load((portion, total) => {
-                status.innerText = `being downloaded (${portion} of ${total})`
-            }, () => status.innerText = "being stored").then(() => {
-                status.innerText = "local"
-            }).catch(e => {
-                status.innerText = "remote (download failed)"
-                button.style.display = "initial"
-                button.innerText = "retry"
-            })
+    const button = document.getElementById("load-dict")
+    const download = () => {
+        button.style.display = "none"
+        status.innerText = "being downloaded"
+        dict.load((portion, total) => {
+            status.innerText = `being downloaded (${portion} of ${total})`
+        }, () => status.innerText = "being stored").then(() => {
+            status.innerText = "local"
+        }).catch(e => {
+            status.innerText = "remote (download failed)"
+            button.style.display = "initial"
+            button.innerText = "retry"
         })
     }
+    if (await dict.loading) status.innerText = "local"
+    else if (!(await dict.remoteAvailable)) download()
+    else {
+        status.innerText = "remote"
+        button.style.display = "initial"
+        button.addEventListener("click", download)
+    }
+    const clear = document.getElementById("clear-state")
+    const clearStatus = document.getElementById("clear-status")
+    clear.addEventListener("click", () => {
+        delete window.localStorage["saved"]
+        clearStatus.innerText = "clearing..."
+        dict.clear().then(() => {
+            clearStatus.innerText = ""
+            status.innerText = "remote"
+            button.style.display = "initial"
+        }).catch(e => {
+            clearStatus.innerText = "clear operation failed"
+            throw e
+        })
+    })
 })
 </script>
 </head>
@@ -467,6 +522,11 @@ Refrigerator</textarea>
     <br />
     words list is <span id="load-status">...</span>
     <button id="load-dict">download</button>
+    <br /><br />
+    <div>
+        <button id="clear-state">clear state</button>
+        <span id="clear-status"></span>
+    </div>
 <style>
 .foreground, .background, .reference {
     line-height: 2.5em;

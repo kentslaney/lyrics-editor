@@ -43,6 +43,14 @@ def lookup(word):
     cur.close()
     return res
 
+compiled, reference = "build.html", "</head>"
+inserting = "<script>var ws_available</script>"
+with open(dir / "index.html") as fp:
+    template = fp.read()
+assert reference in template
+with open(dir / compiled, "w") as fp:
+    fp.write(template.replace(reference, inserting + reference))
+
 routes = web.RouteTableDef()
 
 @routes.get("/ws")
@@ -60,7 +68,8 @@ async def websocket_handler(request):
     return ws
 
 static_files = {
-    "/": "index.html",
+    "/": compiled,
+    "/static": "index.html",
     "/cmudict-0.7b": "cmudict-0.7b",
     "/OS8-1.json": "OS8-1.json"
 }

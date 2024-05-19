@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <script type="text/javascript">
 class Cursor {
     url = "https://raw.githubusercontent.com/Alexir/CMUdict/master/cmudict-0.7b"
@@ -519,17 +521,19 @@ But sometimes(1) they don't make sense
 Refrigerator</textarea>
         <div class="background"></div>
     </div>
-    <br />
-    words list is <span id="load-status">...</span>
-    <button id="load-dict">download</button>
-    <br /><br />
-    <div>
-        <button id="clear-state">clear state</button>
-        <span id="clear-status"></span>
+    <div id="page-status">
+        <br />
+        words list is <span id="load-status">...</span>
+        <button id="load-dict">download</button>
+        <div id="debug-clear">
+            <br />
+            <button id="clear-state">clear state</button>
+            <span id="clear-status"></span>
+        </div>
     </div>
 <style>
 .foreground, .background, .reference {
-    line-height: 2.5em;
+    line-height: 2.5;
     margin: 0;
     font-family: monospace;
     white-space: pre-wrap;
@@ -580,6 +584,53 @@ Refrigerator</textarea>
 
 #load-dict {
     display: none;
+}
+
+#debug-clear {
+    display: none;
+}
+
+body {
+    font-size: 1rem;
+}
+
+@media not (any-pointer: fine) {
+    .double-spaced {
+        border-width: 0 0 1px 0;
+        border-color: #000 !important;
+        padding-bottom: 0.5em;
+    }
+}
+
+@media print {
+    .double-spaced {
+        border-width: 0 !important;
+    }
+
+    .foreground {
+        display: none;
+    }
+
+    .container {
+        height: initial;
+    }
+
+    .background, .reference {
+        padding: 0;
+    }
+
+    .reference {
+        transform: translateY(1em);
+        padding-bottom: 1em;
+    }
+
+    #page-status {
+        display: none;
+    }
+
+    body {
+        font-size: 1.5rem;
+    }
 }
 </style>
 </body>

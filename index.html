@@ -371,7 +371,9 @@ class DoubleSpaced {
     async parse() {
         this.editor.update(this.foreground.value).then(() => {
             const limits = this.editor.raw.map(x => x.length)
-            const sep = this.editor.separators.concat([""])
+            const sep = this.editor.separators.map(x => {
+                return "\n ".includes(x) ? x : "\xA0\u200B"
+            }).concat([""])
             this.background.innerText = this.parser(limits).map((x, i) => {
                 console.assert(x.length <= limits[i])
                 return x.padStart(limits[i]) + sep[i]
@@ -390,13 +392,7 @@ class DoubleSpaced {
             const match = this.editor.raw[i].match(/\(([0-9]+)\)$/)
             if (match) return x[parseInt(match[1])]
             return x.reduce((a, b) => {
-                return a.split('').map((y, j) => {
-                    switch (y + b[j]) {
-                        case "xx": return "x"
-                        case "//": return "/"
-                        default: return "\\"
-                    }
-                }).join('')
+                return a.split('').map((y, j) => y === b[j] ? y : "\\").join('')
             })
         }).map((x, i) => {
             const whitespace = limits[i] - x.length

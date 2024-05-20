@@ -452,7 +452,7 @@ class DoubleSpaced {
 
     firstFocus() {
         const size = this.editor.value.length
-        this.foreground.setSelectionRange(this.loaded ? size : 0, size);
+        if (!this.loaded) this.foreground.setSelectionRange(0, size);
     }
 }
 
@@ -514,8 +514,7 @@ window.addEventListener("load", async function() {
 </head>
 <body>
     <div class="double-spaced">
-        <textarea class="foreground" name="main"
-            autofocus onfocus="firstFocus()">
+        <textarea class="foreground" name="main" onfocus="firstFocus()">
 Haikus are easy
 But sometimes(1) they don't make sense
 Refrigerator</textarea>

@@ -439,7 +439,7 @@ class DoubleSpaced {
         return options.map((x, i) => {
             const raw = this.editor.raw[i]
             const curly = raw.match(this.editor.manual)
-            if (curly) return curly[1].replace("*", "X")
+            if (curly) return curly[1].replace(/\*/g, "X")
             if (!x) return raw ? "?" : ""
             const round = raw.match(this.editor.version)
             if (round) {

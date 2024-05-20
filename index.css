@@ -1,0 +1,148 @@
+.foreground, .background, .reference {
+    line-height: 2.5;
+    margin: 0;
+    font-family: monospace;
+    white-space: pre-wrap;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+}
+
+.foreground {
+    font-size: inherit;
+    padding-top: 1em;
+    padding-bottom: 0;
+    outline: 0;
+    width: calc(100% - 1em);
+    border-width: 0;
+    resize: none;
+    overflow: hidden;
+    background: transparent;
+    display: block;
+}
+
+.background {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: -1;
+}
+
+.double-spaced:focus-within {
+    border-color: blue;
+}
+
+.double-spaced {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #000;
+}
+
+.container {
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+}
+
+.reference::before, .reference::after {
+    content: '\200C'
+}
+
+#load-dict {
+    display: none;
+    padding: 1px 0.5em;
+}
+
+#debug-clear {
+    display: none;
+}
+
+#directions {
+    max-width: 40em;
+    margin: 2em auto;
+}
+
+#collapsed {
+    display: none;
+}
+
+#help {
+    padding: 0;
+    float: right;
+}
+
+#help > label::before {
+    content: "help";
+    margin-top: 1px;
+}
+
+#help > label::after {
+    content: "collapse";
+    margin-bottom: 1px;
+}
+
+#help > label::before, #help > label::after {
+    display: block;
+    overflow: hidden;
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+}
+
+#collapsed:not(:checked) + #help > label::before {
+    height: 1px;
+    margin-bottom: -1px;
+}
+
+#collapsed:checked + #help > label::after {
+    height: 1px;
+    margin-top: -1px;
+}
+
+#collapsed:checked ~ #directions {
+    display: none;
+}
+
+body {
+    font-size: 1rem;
+    margin-bottom: 95dvh
+}
+
+@media not (any-pointer: fine) {
+    .double-spaced {
+        border-width: 0 0 1px 0;
+        border-color: #000 !important;
+        padding-bottom: 0.5em;
+    }
+}
+
+@media print {
+    .double-spaced {
+        border-width: 0 !important;
+    }
+
+    .foreground {
+        display: none;
+    }
+
+    .container {
+        height: initial;
+    }
+
+    .background, .reference {
+        padding: 0;
+    }
+
+    .reference {
+        transform: translateY(1em);
+        padding-bottom: 1em;
+    }
+
+    #page-status {
+        display: none;
+    }
+
+    body {
+        font-size: 1.5rem;
+    }
+}

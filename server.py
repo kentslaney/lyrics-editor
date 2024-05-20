@@ -70,6 +70,8 @@ async def websocket_handler(request):
 static_files = {
     "/": compiled,
     "/static": "index.html",
+    "/index.js": "index.js",
+    "/index.css": "index.css",
     "/cmudict-0.7b": "cmudict-0.7b",
     "/OS8-1.json": "OS8-1.json",
     "/manifest.json": "manifest.json",

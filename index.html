@@ -614,6 +614,7 @@ syllable (eg <code>pickin'{/*}</code>).
 
 #load-dict {
     display: none;
+    padding: 1px 0.5em;
 }
 
 #debug-clear {
@@ -636,23 +637,29 @@ syllable (eg <code>pickin'{/*}</code>).
 
 #help > label::before {
     content: "help";
+    margin-top: 1px;
 }
 
 #help > label::after {
     content: "collapse";
+    margin-bottom: 1px;
 }
 
 #help > label::before, #help > label::after {
     display: block;
     overflow: hidden;
+    margin-left: 0.5em;
+    margin-right: 0.5em;
 }
 
 #collapsed:not(:checked) + #help > label::before {
     height: 1px;
+    margin-bottom: -1px;
 }
 
 #collapsed:checked + #help > label::after {
     height: 1px;
+    margin-top: -1px;
 }
 
 #collapsed:checked ~ #directions {

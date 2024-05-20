@@ -438,7 +438,10 @@ class DoubleSpaced {
         return options.map((x, i) => {
             if (!x) return this.editor.raw[i] ? "?" : ""
             const match = this.editor.raw[i].match(this.editor.version)
-            if (match) return x[parseInt(match[1])]
+            if (match) {
+                const version = parseInt(match[1])
+                return version < x.length ? x[version] : "?"
+            }
             return x.reduce((a, b) => {
                 return a.split('').map((y, j) => y === b[j] ? y : "\\").join('')
             })

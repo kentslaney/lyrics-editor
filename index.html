@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" href="icons/512.png">
 <script type="text/javascript">
 class Cursor {
     url = "https://raw.githubusercontent.com/Alexir/CMUdict/master/cmudict-0.7b"
@@ -431,7 +433,7 @@ class DoubleSpaced {
     fill = "\xa0"
     parser(limits) {
         const options = this.editor.pronunciations.map(x => x?.map(y =>
-            y.replace(/[^012]/g, "").replace(/[12]/g, "/").replace(/0/g, "x")))
+            y.replace(/[^012]/g, "").replace(/[12]/g, "/").replace(/0/g, "X")))
         return options.map((x, i) => {
             if (!x) return this.editor.raw[i] ? "?" : ""
             const match = this.editor.raw[i].match(/\(([0-9]+)\)$/)

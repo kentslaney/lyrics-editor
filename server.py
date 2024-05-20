@@ -71,7 +71,9 @@ static_files = {
     "/": compiled,
     "/static": "index.html",
     "/cmudict-0.7b": "cmudict-0.7b",
-    "/OS8-1.json": "OS8-1.json"
+    "/OS8-1.json": "OS8-1.json",
+    "/manifest.json": "manifest.json",
+    "/icons/512.png": "icon.png",
 }
 
 for i, (route, path) in enumerate(static_files.items()):

@@ -1,0 +1,14 @@
+{
+  "name": "Lyrics Editor",
+  "short_name": "Lyrics",
+  "start_url": ".",
+  "display": "fullscreen",
+  "background_color": "#fff",
+  "icons": [
+    {
+      "src": "icons/512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

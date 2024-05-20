@@ -318,7 +318,7 @@ class Editing {
     strip = /[^a-zA-Z']/g
     split = /[\s\-_]/g
     version = /\(([0-9]+)\)[^a-zA-Z']*$/
-    manual = /\{([/\*]+)\}[^a-zA-Z']*$/
+    manual = /\{([/\*]*)\}[^a-zA-Z']*$/
 
     async update(value) {
         const words = value.split(this.split).map(
@@ -534,6 +534,27 @@ Refrigerator</textarea>
         <br />
         words list is <span id="load-status">...</span>
         <button id="load-dict">download</button>
+        <input type="checkbox" id="collapsed">
+        <button id="help" onclick="this.previousElementSibling.checked ^= 1">
+            <label for="collapsed" onclick="event.stopPropagation()"></label>
+        </button>
+        <div id="directions">
+<code>/</code> represents a stressed syllable,
+<code>X</code> represents an unstressed syllable.
+Some words have multiple pronunciations. If a syllable can either be stressed
+or not depending on the pronunciation chosen, the meter is instead marked as
+<code>\</code>. A number in parentheses (eg <code>(0)</code>) at the end of a
+word specifies a pronunciation. When matching a word with its pronunciation,
+only letters and <code>'</code> are considered. This means that the matching
+can be modified by changing <code>'</code> to <code>`</code>. Only space,
+dash, and underscore denote new words, so, by modifying the apostrophe, the two
+sides will be checked together. For example, changing <code>pickin'</code> to
+<code>pickin`[g]</code> causes it to be matched as <code>picking</code>. When a
+word isn't recognized, its meter is marked as a <code>?</code>. To change this,
+denote the correct stress pattern at the end of the word inside curly braces,
+using <code>*</code> instead of <code>X</code> to represent a unstressed
+syllable (eg <code>pickin'{/*}</code>).
+        </div>
         <div id="debug-clear">
             <br />
             <button id="clear-state">clear state</button>
@@ -596,6 +617,45 @@ Refrigerator</textarea>
 }
 
 #debug-clear {
+    display: none;
+}
+
+#directions {
+    max-width: 40em;
+    margin: 2em auto;
+}
+
+#collapsed {
+    display: none;
+}
+
+#help {
+    padding: 0;
+    float: right;
+}
+
+#help > label::before {
+    content: "help";
+}
+
+#help > label::after {
+    content: "collapse";
+}
+
+#help > label::before, #help > label::after {
+    display: block;
+    overflow: hidden;
+}
+
+#collapsed:not(:checked) + #help > label::before {
+    height: 1px;
+}
+
+#collapsed:checked + #help > label::after {
+    height: 1px;
+}
+
+#collapsed:checked ~ #directions {
     display: none;
 }
 

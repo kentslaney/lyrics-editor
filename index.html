@@ -318,6 +318,7 @@ class Editing {
     strip = /[^a-zA-Z']/g
     split = /[\s\-_]/g
     version = /\(([0-9]+)\)[^a-zA-Z']*$/
+    manual = /\{([/\*]+)\}[^a-zA-Z']*$/
 
     async update(value) {
         const words = value.split(this.split).map(
@@ -436,10 +437,13 @@ class DoubleSpaced {
         const options = this.editor.pronunciations.map(x => x?.map(y =>
             y.replace(/[^012]/g, "").replace(/[12]/g, "/").replace(/0/g, "X")))
         return options.map((x, i) => {
-            if (!x) return this.editor.raw[i] ? "?" : ""
-            const match = this.editor.raw[i].match(this.editor.version)
-            if (match) {
-                const version = parseInt(match[1])
+            const raw = this.editor.raw[i]
+            const curly = raw.match(this.editor.manual)
+            if (curly) return curly[1].replace("*", "X")
+            if (!x) return raw ? "?" : ""
+            const round = raw.match(this.editor.version)
+            if (round) {
+                const version = parseInt(round[1])
                 return version < x.length ? x[version] : "?"
             }
             return x.reduce((a, b) => {

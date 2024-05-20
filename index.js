@@ -401,10 +401,13 @@ class DoubleSpaced {
         this.editor = new Editing(cursor)
         this.wrapper = wrapper
         this.foreground = this.wrapper.getElementsByClassName("foreground")[0]
+        const fgCase = this.wrapper.getElementsByClassName("foreground-case")[0]
         this.background = this.wrapper.getElementsByClassName("background")[0]
-        const hide = this.wrapper.appendChild(document.createElement("div"))
-        hide.classList.add("container")
-        this.reference = hide.appendChild(document.createElement("div"))
+        this.container = this.wrapper.insertBefore(
+            document.createElement("div"), fgCase)
+        this.container.classList.add("container")
+        this.reference = this.container.appendChild(
+            document.createElement("div"))
         this.reference.classList.add("reference")
         this.foreground.addEventListener("input", this.update.bind(this))
         this.foreground.addEventListener("input", this.save.bind(this))
@@ -433,8 +436,12 @@ class DoubleSpaced {
     }
 
     resize(e) {
-        this.wrapper.style.minHeight = this.foreground.style.height =
-            this.reference.getBoundingClientRect().height + "px"
+        const res = Math.max(
+            this.background.getBoundingClientRect().height,
+            this.reference.getBoundingClientRect().height)
+        this.foreground.style.height = res + "px"
+        const em = parseInt(this.props.fontSize)
+        this.wrapper.style.paddingBottom = res + em + "px";
     }
 
     async parse() {
@@ -442,17 +449,18 @@ class DoubleSpaced {
             const limits = this.editor.raw.map(x => x.length)
             const padded = this.editor.raw.concat([""])
             const sep = this.editor.separators.map((x, i) => {
-                if ("\n ".includes(x)) return x
+                if (x === " ") return " "
+                if (x === "\n") return "\x0a"
                 const next = padded[i + 1].slice(0, 1)
                 const wordish = next.length && !next.match(this.editor.strip)
                 return wordish ? "\xA0\u200B" : "\xA0"
             }).concat([""])
-            this.background.innerText = this.parser(limits).map((x, i) => {
-                console.assert(x.length <= limits[i])
-                return x.padStart(limits[i]) + sep[i]
-            }).join("")
-            this.wrapper.style.minHeight =
-                this.foreground.getBoundingClientRect().height + "px";
+            this.background.setAttribute("data-meter", this.parser(limits)
+                .map((x, i) => {
+                    console.assert(x.length <= limits[i])
+                    return x.padStart(limits[i]) + sep[i]
+                }).join(""))
+            this.resize()
         })
     }
 
@@ -487,6 +495,22 @@ class DoubleSpaced {
     firstFocus() {
         const size = this.editor.value.length
         if (!this.loaded) this.foreground.setSelectionRange(0, size);
+    }
+
+    get props() {
+        return window.getComputedStyle(this.foreground)
+    }
+
+    split(line) { // TODO: wrapped lines
+        this.wrapper.classList.add("split")
+        const props = this.props
+        const off = line * parseInt(props.lineHeight) +
+            0.5 * parseInt(props.fontSize);
+        this.wrapper.style.setProperty("--offset", off + "px")
+    }
+
+    join() {
+        this.wrapper.classList.remove("split")
     }
 }
 

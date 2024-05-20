@@ -20,7 +20,11 @@
     display: block;
 }
 
-.background {
+.background::before {
+    content: attr(data-meter)
+}
+
+.background-case {
     position: absolute;
     top: 0;
     bottom: 0;
@@ -106,6 +110,63 @@
 body {
     font-size: 1rem;
     margin-bottom: 95dvh
+}
+
+.double-spaced {
+    --offset: 0px;
+}
+
+.split .container {
+    visibility: initial;
+    height: initial;
+    margin-top: calc(1em + var(--offset));
+    position: absolute;
+    width: 100%;
+}
+
+.split .container + .foreground-case {
+    height: var(--offset) !important;
+    overflow: hidden;
+}
+
+.foreground-case {
+    position: absolute;
+    top: 0;
+    width: 100%;
+}
+
+.split .reference {
+    position: relative;
+    margin-top: calc(-1 * var(--offset));
+}
+
+.split .fold {
+    background: #eee;
+    transform: translateY(var(--offset));
+}
+
+.split .background::before {
+    position: absolute;
+    overflow: hidden;
+    height: var(--offset);
+    top: 0;
+}
+
+.split .background::after {
+    content: attr(data-meter);
+    display: block;
+    margin-top: calc(-1 * var(--offset));
+}
+
+.split .background-case {
+    position: initial;
+    height: 0;
+    margin-top: var(--offset);
+    margin-bottom: calc(-1 * var(--offset));
+}
+
+.split .background {
+    overflow: hidden;
 }
 
 @media not (any-pointer: fine) {

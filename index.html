@@ -260,34 +260,66 @@ class Edit {
         })
     }
 
+    get repr() {
+        const directions = this.dp.slice(1).map(x => x.slice(1).map(y => {
+            switch (y && y[1]) {
+                case null: return " ";
+                case 1: return "\u2191"
+                case 2: return "\u2190"
+                case 0: case 3: return "\u2196"
+            }
+        }).join("")).join("\n")
+        if (typeof this.iter0 !== "string") return directions
+        const rows = directions.split("\n").map((x, i) => {
+            return this.iter0[i] + x + this.iter0[i]
+        }).join("\n")
+        return " " + this.iter1 + "\n" + rows + "\n " + this.iter1
+    }
+
     _path = null
     get path() {
-        if (this._path === null) return this._path = this.loader(this.n, this.m)
+        if (this._path === null) {
+            this.loader(this.n, this.m)
+            this._path = []
+            let n = this.n, m = this.m, step
+            while (n > 0 && m > 0) {
+                step = this.dp[n][m][1]
+                this._path.push(step)
+                n -= ((step || 3) & 1)
+                m -= ((step || 3) & 2) >> 1
+            }
+            const [base, i] = n === 0 ? [m, 2] : [n, 1];
+            this._path = this._path.concat([...Array(base).keys()].map(x => i))
+            this._path.reverse()
+        }
         return this._path
     }
 
     // n shift is lowest bit, m shift is next
     loader(n, m) {
-        if (n == 0) return [...Array(m).keys()].map(x => 2);
-        if (m == 0) return [...Array(n).keys()].map(x => 1);
+        if (n == 0) return [m, 2];
+        if (m == 0) return [n, 1];
         if (this.dp[n][m] !== null) return this.dp[n][m];
         if (this.iter0[n - 1] == this.iter1[m - 1]) {
             let prev = this.dp[n - 1][m - 1]
             if (prev === null) prev = this.loader(n - 1, m - 1)
-            return this.dp[n][m] = prev.concat([0])
+            return this.dp[n][m] = [prev[0], 0]
         }
         let options = []
         for (let i = 1; i < 4; i++) {
-            const j = n - (i & 1), k = m - (i & 2) / 2
+            const j = n - (i & 1), k = m - ((i & 2) >> 1)
             let prev = this.dp[j][k]
             if (prev === null) prev = this.loader(j, k)
-            options.push(prev.concat([i]))
+            options.push(prev[0] + 1)
         }
-        const min = options.toSorted((a, b) => {
-            const [c, d] = [a, b].map(x => x.reduce((c, d) => c + (d !== 0), 0))
-            return c - d
-        })[0]
-        return this.dp[n][m] = min
+
+        // min options
+        if (options[0] <= options[1] && options[0] <= options[2])
+            return this.dp[n][m] = [options[0], 1];
+        if (options[1] <= options[0] && options[1] <= options[2])
+            return this.dp[n][m] = [options[1], 2];
+        else
+            return this.dp[n][m] = [options[2], 3];
     }
 
     walk(f, arr, bit) { // f(element, rewritten, index)

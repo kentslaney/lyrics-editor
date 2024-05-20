@@ -317,6 +317,7 @@ class Editing {
 
     strip = /[^a-zA-Z']/g
     split = /[\s\-_]/g
+    version = /\(([0-9]+)\)[^a-zA-Z']*$/
 
     async update(value) {
         const words = value.split(this.split).map(
@@ -436,7 +437,7 @@ class DoubleSpaced {
             y.replace(/[^012]/g, "").replace(/[12]/g, "/").replace(/0/g, "X")))
         return options.map((x, i) => {
             if (!x) return this.editor.raw[i] ? "?" : ""
-            const match = this.editor.raw[i].match(/\(([0-9]+)\)$/)
+            const match = this.editor.raw[i].match(this.editor.version)
             if (match) return x[parseInt(match[1])]
             return x.reduce((a, b) => {
                 return a.split('').map((y, j) => y === b[j] ? y : "\\").join('')

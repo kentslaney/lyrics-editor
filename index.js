@@ -438,12 +438,11 @@ class DoubleSpaced {
     }
 
     resize(e) {
+        if (this.wrapper.classList.contains("selecting")) return
         const res = Math.max(
             this.background.getBoundingClientRect().height,
             this.reference.getBoundingClientRect().height)
-        this.foreground.style.height = res + "px"
-        const em = parseInt(this.props.fontSize)
-        this.wrapper.style.paddingBottom = res + em + "px";
+        this.wrapper.style.setProperty("--input-height", res + "px")
     }
 
     async parse() {
@@ -513,10 +512,14 @@ class DoubleSpaced {
         document.addEventListener("keydown", unscroll)
         document.addEventListener("keypress", unscroll)
         this.caretMove(this.foreground, this.unfold.bind(this))
-        this.foreground.addEventListener("mousedown", this.join.bind(this))
         this.foreground.addEventListener("blur", this.join.bind(this))
         this.reference.addEventListener("click", this.forward.bind(this))
         this.reference.addEventListener("keypress", e => e.preventDefault())
+        let timeout = null
+        this.foreground.addEventListener("mousedown", () => {
+            if (timeout !== null) window.clearTimeout(timeout)
+            timeout = window.setTimeout(this.join.bind(this), 200)
+        })
         let selectionEndOOB = false
         this.reference.addEventListener("selectstart", e => {
             selectionEndOOB = true
@@ -525,9 +528,13 @@ class DoubleSpaced {
                 this.fold.getBoundingClientRect().height + "px")
         })
         window.addEventListener("mouseup", e => {
-            this.wrapper.classList.remove("selecting")
             if (selectionEndOOB && e.target !== this.reference) this.forward(e)
+            this.wrapper.classList.remove("selecting")
             selectionEndOOB = false
+            if (timeout !== null) {
+                window.clearTimeout(timeout)
+                timeout = null
+            }
         })
     }
 
@@ -557,18 +564,16 @@ class DoubleSpaced {
         el.addEventListener('selectend', check);
     }
 
+    lineRef = null
     unfold() {
         const offset = this.foreground.selectionEnd
         const substr = this.foreground.value.slice(0, offset)
         const breaks = (substr.match(/\n/g)||[]).length
         let el = this.reference.firstChild
-        for (let i = 0; el !== null && i < breaks; i += el?.nodeType === 3){
-            el = el.nextSibling
+        for (let i = 0; el !== null && i < breaks; i += el?.nodeType === 1) {
+            while((el = el.nextSibling) === this.lineRef){}
         }
-        const baseline = el?.previousSibling?.getBoundingClientRect()
-        Array.prototype.map.call(this.wrapper.getElementsByClassName(
-            "long-break"), x => { x.classList.remove("long-break") })
-        this.longBreak = el.nextElementSibling?.classList.add("long-break")
+        const baseline = el.nodeType === 1 ? el.getBoundingClientRect() : null
         let parent = this.wrapper.getBoundingClientRect().y
         if (this.wrapper.classList.contains("split"))
             parent += this.fold.getBoundingClientRect().height
@@ -577,10 +582,40 @@ class DoubleSpaced {
         div.classList.add("line-ref")
         const last = substr.match(/(?<=^|\n)[^\n]*$/)[0]
         div.innerText = last
-        const height = div.getBoundingClientRect().height
-        this.container.removeChild(div)
-        this.split(undefined, start + height)
+        const bbox = div.getBoundingClientRect()
+
+        const end = this.foreground.value.slice(offset - last.length)
+            .match(/^[^\n]*(?=\n|$)/)[0]
+        div.innerText = end
+        const eol = div.appendChild(document.createElement("span"))
+        eol.innerText = " "
+        const ref = eol.getBoundingClientRect()
+        // padding-left: 0.5em
+        const size = parseInt(this.props.fontSize)
+        const wrapped = Math.round((ref.left - bbox.left - size / 2) / ref.width)
+        div.innerText = end.slice(0, -wrapped)
+
+        if (this.lineRef !== null)
+            this.lineRef.parentElement?.removeChild(this.lineRef)
+        this.lineRef = div
+
+        Array.prototype.map.call(this.wrapper.getElementsByClassName(
+            "long-break"), x => { x.classList.remove("long-break") })
+        const long = end.length - wrapped > last.length
+        const br = long ? el : el.nextElementSibling;
+        br?.classList.add("long-break")
+        if (long) {
+            this.reference.insertBefore(this.container.removeChild(div), br)
+        }
+
+        this.split(undefined, start + bbox.height)
         this.fgCase.scrollTop = 0
+
+        // window.setTimeout(() => {
+        //     this.wrapper.classList.add("selecting")
+        //     this.reference.style.setProperty("--fold-height",
+        //         this.fold.getBoundingClientRect().height + "px")
+        // }, 100)
     }
 
     split(line, clientY) {
@@ -590,12 +625,17 @@ class DoubleSpaced {
         const size = parseInt(props.fontSize)
         if (line === null || line === undefined)
             line = Math.round(clientY / height)
+        // 0.5em to cut off in unoccupied space
         const off = line * height + 0.5 * size;
         this.wrapper.style.setProperty("--offset", off + "px")
         this.reference.setAttribute("contenteditable", "true")
     }
 
     lineCount(el, offset) {
+        if (el === this.reference) {
+            el = this.reference.childNodes[offset]
+            offset = 0
+        }
         while ((el = el.previousSibling) !== null) {
             if (el.nodeType === 3) offset += el.textContent.length
             else if (el.nodeType === 1 && el.tagName === "BR") offset++
@@ -607,10 +647,20 @@ class DoubleSpaced {
         const sel = window.getSelection()
         if (sel.type === "none") return
         const range = sel.getRangeAt(0)
-        const start = this.lineCount(range.startContainer, range.startOffset)
-        const end = this.lineCount(range.endContainer, range.endOffset)
-        this.foreground.focus()
-        this.foreground.setSelectionRange(start, end)
+        let hi = range.startContainer
+        const lo = range.endContainer
+        const off = [range.startOffset, range.endOffset]
+        if (this.lineRef?.parentElement === this.reference) {
+            if (hi?.parentElement === this.lineRef)
+                hi = this.lineRef.nextElementSibling.nextSibling
+            this.lineRef.parentElement?.removeChild(this.lineRef)
+        }
+        const start = this.lineCount(hi, off[0])
+        const end = this.lineCount(lo, off[1])
+        window.setTimeout(() => {
+            this.foreground.focus()
+            this.foreground.setSelectionRange(start, end)
+        }, 0)
     }
 
 

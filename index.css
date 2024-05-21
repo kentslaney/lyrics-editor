@@ -1,4 +1,4 @@
-.foreground, .background, .reference {
+.foreground, .background, .reference, .line-ref {
     line-height: 2.5;
     margin: 0;
     font-family: monospace;
@@ -30,7 +30,7 @@
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: -1;
+    pointer-events: none;
 }
 
 .double-spaced:focus-within {
@@ -124,9 +124,10 @@ body {
     width: 100%;
 }
 
-.split .container + .foreground-case {
+.split .foreground-case {
     height: var(--offset) !important;
     overflow: hidden;
+    padding-bottom: 2.5em;
 }
 
 .foreground-case {
@@ -143,6 +144,9 @@ body {
 .split .fold {
     background: #eee;
     transform: translateY(var(--offset));
+    position: relative;
+    z-index: 1;
+    min-height: 2.5em;
 }
 
 .split .background::before {
@@ -150,12 +154,15 @@ body {
     overflow: hidden;
     height: var(--offset);
     top: 0;
+    right: 0.5em;
+    left: 0.5em;
 }
 
 .split .background::after {
     content: attr(data-meter);
     display: block;
     margin-top: calc(-1 * var(--offset));
+    pointer-events: none;
 }
 
 .split .background-case {

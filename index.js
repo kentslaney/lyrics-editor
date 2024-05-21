@@ -289,10 +289,10 @@ class Edit {
 
     // n shift is lowest bit, m shift is next
     loader(n, m) {
-        if (n == 0) return [m, 2];
-        if (m == 0) return [n, 1];
+        if (n === 0) return [m, 2];
+        if (m === 0) return [n, 1];
         if (this.dp[n][m] !== null) return this.dp[n][m];
-        if (this.iter0[n - 1] == this.iter1[m - 1]) {
+        if (this.iter0[n - 1] === this.iter1[m - 1]) {
             let prev = this.dp[n - 1][m - 1]
             if (prev === null) prev = this.loader(n - 1, m - 1)
             return this.dp[n][m] = [prev[0], 0]
@@ -401,10 +401,11 @@ class DoubleSpaced {
         this.editor = new Editing(cursor)
         this.wrapper = wrapper
         this.foreground = this.wrapper.getElementsByClassName("foreground")[0]
-        const fgCase = this.wrapper.getElementsByClassName("foreground-case")[0]
+        this.fgCase = this.wrapper.getElementsByClassName("foreground-case")[0]
         this.background = this.wrapper.getElementsByClassName("background")[0]
+        this.fold = this.wrapper.getElementsByClassName("fold")[0]
         this.container = this.wrapper.insertBefore(
-            document.createElement("div"), fgCase)
+            document.createElement("div"), this.fgCase)
         this.container.classList.add("container")
         this.reference = this.container.appendChild(
             document.createElement("div"))
@@ -414,6 +415,7 @@ class DoubleSpaced {
         this.foreground.addEventListener("input", debounce(
             this.debounce_ms, this.parse.bind(this)))
         new ResizeObserver(this.resize.bind(this)).observe(this.reference)
+        this.bindFold()
         if (load) this.load()
         this.update()
         this.parse()
@@ -501,16 +503,108 @@ class DoubleSpaced {
         return window.getComputedStyle(this.foreground)
     }
 
-    split(line) { // TODO: wrapped lines
-        this.wrapper.classList.add("split")
-        const props = this.props
-        const off = line * parseInt(props.lineHeight) +
-            0.5 * parseInt(props.fontSize);
-        this.wrapper.style.setProperty("--offset", off + "px")
+    bindFold() {
+        const unscroll = e => {
+            if (e.key === "ArrowDown") {
+                this.fgCase.scrollTop = 0;
+                window.setTimeout(() => { this.fgCase.scrollTop = 0 }, 0)
+            }
+        }
+        document.addEventListener("keydown", unscroll)
+        document.addEventListener("keypress", unscroll)
+        this.caretMove(this.foreground, this.unfold.bind(this))
+        this.caretMove(this.foreground, console.log)
+        this.foreground.addEventListener("blur", this.join.bind(this))
+        this.reference.addEventListener("click", this.forward.bind(this))
+        this.reference.addEventListener("keypress", e => e.preventDefault())
+        let selectionEndOOB = false
+        this.reference.addEventListener("mousedown", e => {
+            selectionEndOOB = true
+        })
+        window.addEventListener("mouseup", e => {
+            if (selectionEndOOB && e.target !== this.reference) this.forward()
+            let selectionEndOOB = false
+        })
     }
 
-    join() {
+    caretMove(el, f) {
+        // https://stackoverflow.com/a/53999418
+        let prev = -1;
+        const check = (e => {
+            const next = el.selectionEnd;
+            if (next !== prev) {
+                f(e, next, prev)
+                prev = next
+            }
+        }).bind(this)
+        // el.addEventListener('blur', () => { prev = -1 });
+        el.addEventListener('keydown', check);
+        el.addEventListener('keypress', check);
+        el.addEventListener('keyup', check);
+        el.addEventListener('mouseup', check);
+        el.addEventListener('touchend', check);
+        el.addEventListener('input', check);
+        el.addEventListener('select', check);
+        el.addEventListener('selectstart', check);
+        el.addEventListener('selectend', check);
+    }
+
+    unfold() {
+        const offset = this.foreground.selectionEnd
+        const substr = this.editor.value.slice(0, offset)
+        const breaks = (substr.match(/\n/g)||[]).length
+        let el = this.reference.firstChild
+        for (let i = 0; i < breaks; i += (el = el.nextSibling).nodeType === 3){}
+        const baseline = el.previousSibling?.getBoundingClientRect()
+        let parent = this.wrapper.getBoundingClientRect().y
+        if (this.wrapper.classList.contains("split"))
+            parent += this.fold.getBoundingClientRect().height
+        const start = baseline ? baseline.y + baseline.height - parent : 0
+        const div = this.container.appendChild(document.createElement("div"))
+        div.classList.add("line-ref")
+        const last = substr.match(/(?<=^|\n)[^\n]*$/)[0]
+        div.innerText = last
+        const height = div.getBoundingClientRect().height
+        this.container.removeChild(div)
+        this.split(undefined, start + height)
+        this.fgCase.scrollTop = 0
+    }
+
+    split(line, clientY) {
+        this.wrapper.classList.add("split")
+        const props = this.props
+        const height = parseInt(props.lineHeight)
+        const size = parseInt(props.fontSize)
+        if (line === null || line === undefined)
+            line = Math.round(clientY / height)
+        const off = line * height + 0.5 * size;
+        this.wrapper.style.setProperty("--offset", off + "px")
+        this.reference.setAttribute("contenteditable", "true")
+    }
+
+    lineCount(el, offset) {
+        while ((el = el.previousSibling) !== null) {
+            if (el.nodeType === 3) offset += el.textContent.length
+            else if (el.nodeType === 1 && el.tagName === "BR") offset++
+        }
+        return offset
+    }
+
+    forward(e) {
+        const sel = window.getSelection()
+        if (sel.type === "none") return
+        const range = sel.getRangeAt(0)
+        const start = this.lineCount(range.startContainer, range.startOffset)
+        const end = this.lineCount(range.endContainer, range.endOffset)
+        this.foreground.focus()
+        this.foreground.setSelectionRange(start, end)
+    }
+
+
+    join(e) {
+        if (e?.relatedTarget === this.reference) return
         this.wrapper.classList.remove("split")
+        this.fgCase.scrollTop = 0
     }
 }
 

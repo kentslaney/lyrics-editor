@@ -505,7 +505,7 @@ class DoubleSpaced {
 
     bindFold() {
         const unscroll = e => {
-            if (e.key === "ArrowDown") {
+            if (e.key === "ArrowDown" || e.key === "ArrowRight") {
                 this.fgCase.scrollTop = 0;
                 window.setTimeout(() => { this.fgCase.scrollTop = 0 }, 0)
             }
@@ -526,7 +526,7 @@ class DoubleSpaced {
         })
         window.addEventListener("mouseup", e => {
             this.wrapper.classList.remove("selecting")
-            if (selectionEndOOB && e.target !== this.reference) this.forward()
+            if (selectionEndOOB && e.target !== this.reference) this.forward(e)
             selectionEndOOB = false
         })
     }
@@ -535,6 +535,10 @@ class DoubleSpaced {
         // https://stackoverflow.com/a/53999418
         let prev = -1;
         const check = (e => {
+            check12(e)
+            window.setTimeout(() => check12(e), 0)
+        })
+        const check12 = (e => {
             const next = el.selectionEnd;
             if (next !== prev) {
                 f(e, next, prev)
@@ -555,11 +559,13 @@ class DoubleSpaced {
 
     unfold() {
         const offset = this.foreground.selectionEnd
-        const substr = this.editor.value.slice(0, offset)
+        const substr = this.foreground.value.slice(0, offset)
         const breaks = (substr.match(/\n/g)||[]).length
         let el = this.reference.firstChild
-        for (let i = 0; i < breaks; i += (el = el.nextSibling).nodeType === 3){}
-        const baseline = el.previousSibling?.getBoundingClientRect()
+        for (let i = 0; el !== null && i < breaks; i += el?.nodeType === 3){
+            el = el.nextSibling
+        }
+        const baseline = el?.previousSibling?.getBoundingClientRect()
         Array.prototype.map.call(this.wrapper.getElementsByClassName(
             "long-break"), x => { x.classList.remove("long-break") })
         this.longBreak = el.nextElementSibling?.classList.add("long-break")

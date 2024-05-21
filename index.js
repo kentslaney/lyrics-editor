@@ -541,7 +541,7 @@ class DoubleSpaced {
                 prev = next
             }
         }).bind(this)
-        // el.addEventListener('blur', () => { prev = -1 });
+        el.addEventListener('blur', () => { prev = -1 });
         el.addEventListener('keydown', check);
         el.addEventListener('keypress', check);
         el.addEventListener('keyup', check);

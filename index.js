@@ -610,12 +610,6 @@ class DoubleSpaced {
 
         this.split(undefined, start + bbox.height)
         this.fgCase.scrollTop = 0
-
-        // window.setTimeout(() => {
-        //     this.wrapper.classList.add("selecting")
-        //     this.reference.style.setProperty("--fold-height",
-        //         this.fold.getBoundingClientRect().height + "px")
-        // }, 100)
     }
 
     split(line, clientY) {

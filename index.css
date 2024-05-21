@@ -145,7 +145,7 @@ body {
     background: #eee;
     transform: translateY(var(--offset));
     position: relative;
-    z-index: 1;
+    z-index: 2;
     min-height: 2.5em;
 }
 
@@ -178,6 +178,30 @@ body {
 
 #page-status a {
     color: #444;
+}
+
+.split.selecting .long-break {
+    line-height: 1;
+    font-size: var(--fold-height);
+    display: block;
+    content: "";
+}
+
+.split.selecting .long-break::before {
+    content: " ";
+}
+
+.split.selecting .reference {
+    transform: translateY(calc(-1 * var(--fold-height)));
+}
+
+.split.selecting .container {
+    overflow: visible;
+    z-index: 1;
+}
+
+.split.selecting .foreground {
+    visibility: hidden;
 }
 
 @media not (any-pointer: fine) {

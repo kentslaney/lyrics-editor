@@ -513,17 +513,21 @@ class DoubleSpaced {
         document.addEventListener("keydown", unscroll)
         document.addEventListener("keypress", unscroll)
         this.caretMove(this.foreground, this.unfold.bind(this))
-        this.caretMove(this.foreground, console.log)
+        this.foreground.addEventListener("mousedown", this.join.bind(this))
         this.foreground.addEventListener("blur", this.join.bind(this))
         this.reference.addEventListener("click", this.forward.bind(this))
         this.reference.addEventListener("keypress", e => e.preventDefault())
         let selectionEndOOB = false
-        this.reference.addEventListener("mousedown", e => {
+        this.reference.addEventListener("selectstart", e => {
             selectionEndOOB = true
+            this.wrapper.classList.add("selecting")
+            this.reference.style.setProperty("--fold-height",
+                this.fold.getBoundingClientRect().height + "px")
         })
         window.addEventListener("mouseup", e => {
+            this.wrapper.classList.remove("selecting")
             if (selectionEndOOB && e.target !== this.reference) this.forward()
-            let selectionEndOOB = false
+            selectionEndOOB = false
         })
     }
 
@@ -556,6 +560,9 @@ class DoubleSpaced {
         let el = this.reference.firstChild
         for (let i = 0; i < breaks; i += (el = el.nextSibling).nodeType === 3){}
         const baseline = el.previousSibling?.getBoundingClientRect()
+        Array.prototype.map.call(this.wrapper.getElementsByClassName(
+            "long-break"), x => { x.classList.remove("long-break") })
+        this.longBreak = el.nextElementSibling?.classList.add("long-break")
         let parent = this.wrapper.getBoundingClientRect().y
         if (this.wrapper.classList.contains("split"))
             parent += this.fold.getBoundingClientRect().height

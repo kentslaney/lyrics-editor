@@ -593,12 +593,12 @@ class DoubleSpaced {
         const size = parseInt(this.props.fontSize)
 
         let ref = eol.getBoundingClientRect(), wrapped
-        do {
+        while(ref.bottom !== char.bottom && rewrite.textContent !== "") {
             const clientX = ref.left - bbox.left - size / 2
             wrapped = Math.round(clientX / char.width)
             rewrite.textContent = rewrite.textContent.slice(0, -wrapped)
             ref = eol.getBoundingClientRect()
-        } while(ref.bottom !== char.bottom && rewrite.textContent !== "")
+        }
 
         const clientX = ref.left - bbox.left - size / 2
         const above = Math.round(clientX / char.width)
@@ -628,7 +628,8 @@ class DoubleSpaced {
         this.fgCase.scrollTop = 0
         this.reference.style.setProperty("--fold-height",
             this.fold.getBoundingClientRect().height + "px")
-        this.expand(breaks, ...(long ? [headline - above, headline] : []))
+        const full = above === 0
+        this.expand(breaks, ...(full ? [] : [headline - above, headline]))
     }
 
     expand(breaks, start, end) {

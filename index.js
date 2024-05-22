@@ -648,11 +648,11 @@ class DoubleSpaced {
         let i = 0, j = 0, char = 0, pos = 0, active = null
         for (let seen = 0; seen < breaks; seen += (sep[i++] === "\n")) {}
         while (start !== undefined && char < start) char += raw[i++].length + 1
-        for (j = i; (end === undefined || char < end) && j < sep.length &&
+        for (j = i; (end === undefined || char < end) && j < raw.length &&
                 (j === i || sep[j - 1] !== "\n"); char += raw[j++].length + 1) {
             const ele = el.appendChild(document.createElement("span"))
             ele.innerText = raw[j]
-            el.appendChild(document.createTextNode(sep[j]))
+            if (j < sep.length) el.appendChild(document.createTextNode(sep[j]))
             const bbox = ele.getBoundingClientRect()
             const center = bbox.left - container + bbox.width / 2
             const cur = cursor >= char && cursor <= char + raw[j].length

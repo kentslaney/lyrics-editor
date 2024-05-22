@@ -249,7 +249,7 @@ body {
     .double-spaced {
         border-width: 0 0 1px 0;
         border-color: #000 !important;
-        padding-bottom: 0.5em;
+        /* padding-bottom: 0.5em; */
     }
 }
 

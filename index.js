@@ -575,7 +575,7 @@ class DoubleSpaced {
         for (let i = 0; el !== null && i < breaks; i += el?.nodeType === 1) {
             while((el = el.nextSibling) === this.lineRef){}
         }
-        const baseline = el.nodeType === 1 ? el.getBoundingClientRect() : null
+        const baseline = el?.nodeType === 1 ? el.getBoundingClientRect() : null
         let parent = this.wrapper.getBoundingClientRect().y
         if (this.wrapper.classList.contains("split"))
             parent += this.fold.getBoundingClientRect().height
@@ -613,7 +613,7 @@ class DoubleSpaced {
         this.lineRef = div
 
         const long = end.length - wrapped > last.length
-        const br = long ? el : el.nextElementSibling;
+        const br = long ? el : el?.nextElementSibling;
         if (long) {
             this.reference.insertBefore(this.container.removeChild(div), br)
             const below = document.createElement("div")
@@ -747,9 +747,11 @@ class DoubleSpaced {
         }
         while ((el = el.previousSibling) !== null) {
             if (el.nodeType === 3) offset += el.textContent.length
-            else if (el.nodeType === 1 && el.tagName === "BR") offset++
-            else if (el.classList.contains("below-fold"))
-                offset += el.innerText.length
+            else if (el.nodeType === 1) {
+                if (el.tagName === "BR") offset++
+                else if (el.classList.contains("below-fold"))
+                    offset += el.innerText.length
+            }
         }
         return offset
     }

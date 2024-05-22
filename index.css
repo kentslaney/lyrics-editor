@@ -324,7 +324,7 @@ body {
     display: inline-block;
 }
 
-.fold::after {
+.split .fold::after {
     content: '';
     width: var(--word-width);
     display: block;

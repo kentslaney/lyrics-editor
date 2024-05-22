@@ -396,7 +396,8 @@ function debounce(ms, f) {
 }
 
 class DoubleSpaced {
-    debounce_ms = 1000
+    input_debounce_ms = 1000
+    resize_debounce_ms = 100
     constructor(cursor, wrapper, load = true) {
         this.editor = new Editing(cursor)
         this.wrapper = wrapper
@@ -413,10 +414,11 @@ class DoubleSpaced {
         this.foreground.addEventListener("input", this.update.bind(this))
         this.foreground.addEventListener("input", this.save.bind(this))
         this.foreground.addEventListener("input", debounce(
-                this.debounce_ms, () => {
+                this.input_debounce_ms, () => {
             this.parse()
             this.unfold()
         }))
+        this.reflow = debounce(this.resize_debounce_ms, this.unfold.bind(this))
         new ResizeObserver(this.resize.bind(this)).observe(this.reference)
         this.bindFold()
         if (load) this.load()
@@ -446,6 +448,7 @@ class DoubleSpaced {
             this.background.getBoundingClientRect().height,
             this.reference.getBoundingClientRect().height)
         this.wrapper.style.setProperty("--input-height", res + "px")
+        if (this.wrapper.classList.contains("split")) this.reflow()
     }
 
     async parse() {
@@ -628,11 +631,13 @@ class DoubleSpaced {
         this.fgCase.scrollTop = 0
         this.reference.style.setProperty("--fold-height",
             this.fold.getBoundingClientRect().height + "px")
-        const full = above === 0
-        this.expand(breaks, ...(full ? [] : [headline - above, headline]))
+
+        const caret = offset === this.foreground.selectionStart
+        this.expand(breaks, caret ? last.length : -1,
+            ...(above === 0 ? [] : [headline - above, headline]))
     }
 
-    expand(breaks, start, end) {
+    expand(breaks, cursor, start, end) {
         while (this.fold.firstChild) this.fold.removeChild(this.fold.firstChild)
         const el = document.createElement("div")
         el.classList.add("word-ref")
@@ -640,53 +645,75 @@ class DoubleSpaced {
         const container = el.getBoundingClientRect().left
         const sep = this.editor.separators
         const raw = this.editor.raw
-        let i = 0, j = 0, char = 0, pos = 0
+        let i = 0, j = 0, char = 0, pos = 0, active = null
         for (let seen = 0; seen < breaks; seen += (sep[i++] === "\n")) {}
-        const f = () => {
+        while (start !== undefined && char < start) char += raw[i++].length + 1
+        for (j = i; (end === undefined || char < end) && j < sep.length &&
+                (j === i || sep[j - 1] !== "\n"); char += raw[j++].length + 1) {
             const ele = el.appendChild(document.createElement("span"))
             ele.innerText = raw[j]
             el.appendChild(document.createTextNode(sep[j]))
             const bbox = ele.getBoundingClientRect()
             const center = bbox.left - container + bbox.width / 2
-            this.annotate(j, center - pos)
+            const cur = cursor >= char && cursor <= char + raw[j].length
+            const pad = center - pos
+            const which = this.annotate(j, bbox.left, bbox.width, pad, cur)
+            if (cur) active = [j, bbox.left, bbox.width, pad, which]
             pos = center
         }
-        if (start === undefined) {
-            for (j = i; j < sep.length && sep[j] !== "\n"; j++) f()
-            f()
-        } else {
-            while (char < start) char += raw[i++].length + 1
-            for (j = i; char < end && j < sep.length && (j === i ||
-                sep[j - 1] !== "\n"); char += raw[j++].length + 1) f()
-        }
         this.container.removeChild(el)
+        if (active !== null) this.suggest(...active)
     }
 
-    annotate(idx, pad) {
+    suggest(idx, left, width, pad, which) {
+        const wrapper = this.fold.appendChild(document.createElement("div"))
+        wrapper.classList.add("suggestions")
+        const el = wrapper.appendChild(document.createElement("div"))
+        const f = eles => eles.forEach((x, i) => {
+            if (i > 0) el.appendChild(document.createElement("span"))
+                .classList.add("sep")
+            const ele = el.appendChild(document.createElement("span"))
+            ele.innerText = x
+            ele.classList.add("opt")
+        })
+        if (which === undefined) {
+            f(this.editor.pronunciations[idx])
+        } else if (which !== null) { }
+    }
+
+    annotate(idx, left, width, pad, cur) {
         const el = this.fold.appendChild(document.createElement("span"))
         el.style.setProperty("--left-pad", pad + "px") // haha left pad
         let child = el
         for (let i = 0; i < 2; i++)
             child = child.appendChild(document.createElement("span"))
-        const note = this.note(idx)
-        if (typeof note === "string") child.innerText = note
-        else {
-            el.classList.add("unclear")
-            el.style.setProperty("--versions", `'${note}'`)
+        if (cur) {
+            el.classList.add("active")
+            this.fold.style.setProperty("--word-width", width + "px")
+            this.fold.style.setProperty("--word-offset", left + "px")
         }
+        const note = this.note(idx)
+        const options = this.editor.pronunciations[idx]
+        if (note === undefined) {
+            el.classList.add("unclear")
+            el.style.setProperty("--versions", `'${options.length}'`)
+        } else if (note !== null) {
+            child.innerText = options[note]
+        }
+        return note
     }
 
     note(idx) {
         const options = this.editor.pronunciations[idx]
-        if (options === undefined) return ""
+        if (options === undefined) return null
         const round = this.editor.raw[idx].match(this.editor.version)
         if (round) { // round brackets
             const version = parseInt(round[1])
-            if (version >= options.length) return ""
-            return options[version]
+            if (version >= options.length) return null
+            return version
         }
-        if (options.length === 1) return options[0]
-        return options.length
+        if (options.length === 1) return 0
+        return undefined
     }
 
     hoistBelow() {

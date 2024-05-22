@@ -52,7 +52,7 @@
 }
 
 .reference::before, .reference::after {
-    content: '\200C'
+    content: '\200B'
 }
 
 #load-dict {
@@ -222,7 +222,7 @@ body {
 }
 
 .line-ref::before {
-    content: '\200C'
+    content: '\200B'
 }
 
 .line-ref {
@@ -312,5 +312,35 @@ body {
 .unclear > span > span::before {
     content: '[' var(--versions) ' versions]';
     color: #444;
+}
+
+.active > span > span, .active > span > span::before {
+    color: red;
+}
+
+.fold::before {
+    content: '';
+    width: 0.7071em;
+    display: inline-block;
+}
+
+.fold::after {
+    content: '';
+    width: var(--word-width);
+    display: block;
+    height: 2px;
+    position: absolute;
+    left: calc(var(--word-offset));
+    top: 0;
+    background: #000;
+}
+
+.suggestions {
+    color: red;
+    padding-left: 0.5em;
+}
+
+.sep::before {
+    content: '\2003\2022\2003';
 }
 

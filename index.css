@@ -286,6 +286,7 @@ body {
 
 .fold {
     font-family: monospace;
+    user-select: none;
 }
 
 .fold > span {

@@ -651,7 +651,7 @@ class DoubleSpaced {
             pos = center
         }
         if (start === undefined) {
-            for (j = i; sep[j] !== "\n"; j++) f()
+            for (j = i; j < sep.length && sep[j] !== "\n"; j++) f()
             f()
         } else {
             while (char < start) char += raw[i++].length + 1

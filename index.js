@@ -656,7 +656,8 @@ class DoubleSpaced {
             f()
         } else {
             while (char < start) char += raw[i++].length + 1
-            for (j = i; char < end; char += raw[j++].length + 1) f()
+            for (j = i; char < end && j < sep.length && sep[j] !== "\n";
+                char += raw[j++].length + 1) f()
         }
         this.container.removeChild(el)
     }

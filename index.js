@@ -514,10 +514,8 @@ class DoubleSpaced {
         this.caretMove(this.foreground, this.unfold.bind(this))
         this.foreground.addEventListener("blur", this.join.bind(this))
         this.reference.addEventListener("keypress", e => e.preventDefault())
-        let timeout = null
         this.foreground.addEventListener("mousedown", () => {
-            if (timeout !== null) window.clearTimeout(timeout)
-            timeout = window.setTimeout(this.join.bind(this), 200)
+            this.join()
         })
         let selectionEndOOB = false
         this.reference.addEventListener("selectstart", e => {
@@ -530,10 +528,6 @@ class DoubleSpaced {
             if (selectionEndOOB || e.target === this.reference) this.forward(e)
             this.wrapper.classList.remove("selecting")
             selectionEndOOB = false
-            if (timeout !== null) {
-                window.clearTimeout(timeout)
-                timeout = null
-            }
         })
     }
 

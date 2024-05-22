@@ -155,7 +155,7 @@ body {
     transform: translateY(var(--offset));
     position: relative;
     z-index: 2;
-    min-height: 2.5em;
+    min-height: 2.5em; /* TODO: remove */
 }
 
 .split .background::before {
@@ -189,8 +189,18 @@ body {
     color: #444;
 }
 
-.split .long-break {
+.split .long-break, .split .below-fold {
     margin-bottom: -2.5em;
+}
+
+.split .below-fold {
+    position: relative;
+    overflow: hidden;
+    margin-top: var(--fold-hides);
+}
+
+.split .below-fold > div {
+    margin-top: calc(-1 * var(--fold-hides));
 }
 
 .split.selecting .long-break {
@@ -218,6 +228,8 @@ body {
 .line-ref {
     visibility: hidden;
     position: absolute;
+    left: 0.5em;
+    right: 0.5em;
 }
 
 .split.selecting .reference > .line-ref {

@@ -512,7 +512,7 @@ class DoubleSpaced {
         document.addEventListener("keydown", unscroll)
         document.addEventListener("keypress", unscroll)
         this.caretMove(this.foreground, this.unfold.bind(this))
-        // this.foreground.addEventListener("blur", this.join.bind(this))
+        this.foreground.addEventListener("blur", this.join.bind(this))
         this.reference.addEventListener("keypress", e => e.preventDefault())
         this.foreground.addEventListener("mousedown", () => {
             this.join()
@@ -559,6 +559,7 @@ class DoubleSpaced {
 
     lineRef = null
     unfold() {
+        this.hoistBelow()
         Array.prototype.map.call(this.wrapper.getElementsByClassName(
             "long-break"), x => { x.parentElement.removeChild(x) })
         const offset = this.foreground.selectionEnd
@@ -579,17 +580,26 @@ class DoubleSpaced {
         div.innerText = last
         const bbox = div.getBoundingClientRect()
 
-        const end = this.foreground.value.slice(offset - last.length)
-            .match(/^[^\n]*(?=\n|$)/)[0]
-        div.innerText = end
         const eol = div.appendChild(document.createElement("span"))
         eol.innerText = " "
-        const ref = eol.getBoundingClientRect()
-        // padding-left: 0.5em
+        const cutoff = eol.previousSibling
+        const char = eol.getBoundingClientRect()
+        eol.innerText = "\u200C"
+        const bottom = eol.getBoundingClientRect().bottom
+
+        const end = this.foreground.value.slice(offset - last.length)
+            .match(/^[^\n]*(?=\n|$)/)[0]
+        if (cutoff) div.removeChild(cutoff)
+        const rewrite = div.insertBefore(document.createTextNode(end), eol)
         const size = parseInt(this.props.fontSize)
-        const clientX = ref.left - bbox.left - size / 2
-        const wrapped = Math.round(clientX / ref.width)
-        div.innerText = end.slice(0, -wrapped)
+
+        let ref = eol.getBoundingClientRect(), wrapped
+        do {
+            const clientX = ref.left - bbox.left - size / 2
+            wrapped = Math.round(clientX / char.width)
+            rewrite.textContent = rewrite.textContent.slice(0, -wrapped)
+            ref = eol.getBoundingClientRect()
+        } while(ref.bottom !== bottom && rewrite.textContent !== "")
 
         if (this.lineRef !== null)
             this.lineRef.parentElement?.removeChild(this.lineRef)
@@ -599,18 +609,28 @@ class DoubleSpaced {
         const br = long ? el : el.nextElementSibling;
         if (long) {
             this.reference.insertBefore(this.container.removeChild(div), br)
+            const below = document.createElement("div")
+            below.appendChild(this.reference.removeChild(br.nextSibling))
+            const belowCase = document.createElement("div")
+            belowCase.classList.add("below-fold")
+            belowCase.appendChild(below)
+            this.reference.insertBefore(belowCase, br.nextElementSibling)
+            belowCase.style.setProperty("--fold-hides", bbox.height + "px")
         }
         this.reference.insertBefore(document.createElement("div"), br)
             .classList.add("long-break")
 
         this.split(undefined, start + bbox.height)
         this.fgCase.scrollTop = 0
+    }
 
-        window.setTimeout(() => {
-            this.wrapper.classList.add("selecting")
-            this.reference.style.setProperty("--fold-height",
-                this.fold.getBoundingClientRect().height + "px")
-        }, 100)
+    hoistBelow() {
+        let folded = this.wrapper.getElementsByClassName("below-fold")
+        for (const el of folded) {
+            const ele = el.firstElementChild
+            el.parentElement.insertBefore(ele.removeChild(ele.firstChild), el)
+            el.parentElement.removeChild(el)
+        }
     }
 
     split(line, clientY) {
@@ -627,6 +647,8 @@ class DoubleSpaced {
     }
 
     lineCount(el, offset) {
+        if (el.parentElement?.parentElement?.classList.contains("below-fold"))
+            el = el.parentElement.parentElement
         if (el === this.reference) {
             el = this.reference.childNodes[offset]
             offset = 0
@@ -634,6 +656,8 @@ class DoubleSpaced {
         while ((el = el.previousSibling) !== null) {
             if (el.nodeType === 3) offset += el.textContent.length
             else if (el.nodeType === 1 && el.tagName === "BR") offset++
+            else if (el.classList.contains("below-fold"))
+                offset += el.innerText.length
         }
         return offset
     }

@@ -1,4 +1,4 @@
-.foreground, .background, .reference, .container > .line-ref {
+.foreground, .background, .reference, .container > .line-ref, .word-ref {
     line-height: 2.5;
     margin: 0;
     font-family: monospace;
@@ -235,6 +235,12 @@ body {
     right: 0.5em;
 }
 
+.word-ref {
+    visibility: hidden;
+    position: absolute;
+    padding: 0;
+}
+
 .split.selecting .reference > .line-ref {
     visibility: visible;
 }
@@ -283,9 +289,11 @@ body {
 }
 
 .fold > span {
-    width: 1.414em; /* < 2 can handle sequence of 1 character words */
     display: inline-block;
     white-space: nowrap;
+    margin-left: var(--left-pad);
+    transform: translateX(-0.7071em);
+    width: 0;
 }
 
 .fold > span > span {
@@ -298,5 +306,10 @@ body {
     margin-bottom: 70.71%; /* sqrt(2) / 2 */
     transform-origin: bottom left;
     transform: rotate(45deg) translateY(-0.2929em); /* 1 - sqrt(2) / 2 */
+}
+
+.unclear > span > span::before {
+    content: '[' var(--versions) ' versions]';
+    color: #444;
 }
 

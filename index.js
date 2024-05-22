@@ -597,6 +597,11 @@ class DoubleSpaced {
             ref = eol.getBoundingClientRect()
         } while(ref.bottom !== char.bottom && rewrite.textContent !== "")
 
+        const clientX = ref.left - bbox.left - size / 2
+        const above = Math.round(clientX / char.width)
+        const headline = rewrite.textContent.length
+
+        div.removeChild(eol)
         if (this.lineRef !== null)
             this.lineRef.parentElement?.removeChild(this.lineRef)
         this.lineRef = div
@@ -620,6 +625,62 @@ class DoubleSpaced {
         this.fgCase.scrollTop = 0
         this.reference.style.setProperty("--fold-height",
             this.fold.getBoundingClientRect().height + "px")
+        this.expand(breaks, ...(long ? [headline - above, headline] : []))
+    }
+
+    expand(breaks, start, end) {
+        while (this.fold.firstChild) this.fold.removeChild(this.fold.firstChild)
+        const el = document.createElement("div")
+        el.classList.add("word-ref")
+        this.container.appendChild(el)
+        const container = el.getBoundingClientRect().left
+        const sep = this.editor.separators
+        const raw = this.editor.raw
+        let i = 0, j = 0, char = 0, pos = 0
+        for (let seen = 0; seen < breaks; seen += (sep[i++] === "\n")) {}
+        const f = () => {
+            const ele = el.appendChild(document.createElement("span"))
+            ele.innerText = raw[j]
+            el.appendChild(document.createTextNode(sep[j]))
+            const bbox = ele.getBoundingClientRect()
+            const center = bbox.left - container + bbox.width / 2
+            this.annotate(j, center - pos)
+            pos = center
+        }
+        if (start === undefined) {
+            for (j = i; sep[j] !== "\n"; j++) f()
+        } else {
+            while (char < start) char += raw[i++].length + 1
+            for (j = i; char < end; char += raw[j++].length + 1) f()
+        }
+        this.container.removeChild(el)
+    }
+
+    annotate(idx, pad) {
+        const el = this.fold.appendChild(document.createElement("span"))
+        el.style.setProperty("--left-pad", pad + "px") // haha left pad
+        let child = el
+        for (let i = 0; i < 2; i++)
+            child = child.appendChild(document.createElement("span"))
+        const note = this.note(idx)
+        if (typeof note === "string") child.innerText = note
+        else {
+            el.classList.add("unclear")
+            el.style.setProperty("--versions", `'${note}'`)
+        }
+    }
+
+    note(idx) {
+        const options = this.editor.pronunciations[idx]
+        if (options === undefined) return ""
+        const round = this.editor.raw[idx].match(this.editor.version)
+        if (round) { // round brackets
+            const version = parseInt(round[1])
+            if (version >= options.length) return ""
+            return options[version]
+        }
+        if (options.length === 1) return options[0]
+        return options.length
     }
 
     hoistBelow() {

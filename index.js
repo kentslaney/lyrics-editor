@@ -566,8 +566,11 @@ class DoubleSpaced {
 
     lineRef = null
     unfold() {
+        Array.prototype.map.call(this.wrapper.getElementsByClassName(
+            "long-break"), x => { x.parentElement.removeChild(x) })
         const offset = this.foreground.selectionEnd
         const substr = this.foreground.value.slice(0, offset)
+        // console.log(substr, offset, this.foreground.selectionStart)
         const breaks = (substr.match(/\n/g)||[]).length
         let el = this.reference.firstChild
         for (let i = 0; el !== null && i < breaks; i += el?.nodeType === 1) {
@@ -592,21 +595,21 @@ class DoubleSpaced {
         const ref = eol.getBoundingClientRect()
         // padding-left: 0.5em
         const size = parseInt(this.props.fontSize)
-        const wrapped = Math.round((ref.left - bbox.left - size / 2) / ref.width)
+        const clientX = ref.left - bbox.left - size / 2
+        const wrapped = Math.round(clientX / ref.width)
         div.innerText = end.slice(0, -wrapped)
 
         if (this.lineRef !== null)
             this.lineRef.parentElement?.removeChild(this.lineRef)
         this.lineRef = div
 
-        Array.prototype.map.call(this.wrapper.getElementsByClassName(
-            "long-break"), x => { x.classList.remove("long-break") })
         const long = end.length - wrapped > last.length
         const br = long ? el : el.nextElementSibling;
-        br?.classList.add("long-break")
         if (long) {
             this.reference.insertBefore(this.container.removeChild(div), br)
         }
+        this.reference.insertBefore(document.createElement("div"), br)
+            .classList.add("long-break")
 
         this.split(undefined, start + bbox.height)
         this.fgCase.scrollTop = 0
@@ -646,7 +649,9 @@ class DoubleSpaced {
         const off = [range.startOffset, range.endOffset]
         if (this.lineRef?.parentElement === this.reference) {
             if (hi?.parentElement === this.lineRef)
-                hi = this.lineRef.nextElementSibling.nextSibling
+                hi = this.lineRef.nextElementSibling // long-break
+                    .nextElementSibling // br
+                    .nextSibling
             this.lineRef.parentElement?.removeChild(this.lineRef)
         }
         const start = this.lineCount(hi, off[0])

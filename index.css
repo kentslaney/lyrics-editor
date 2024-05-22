@@ -149,6 +149,7 @@ body {
     position: relative;
     z-index: 2;
     min-height: 2.5em;
+    /* min-height: 4.2em; */
 }
 
 .split .background::before {
@@ -182,15 +183,12 @@ body {
     color: #444;
 }
 
-.split.selecting .long-break {
-    line-height: 1;
-    font-size: var(--fold-height);
-    display: block;
-    content: "";
+.split .long-break {
+    margin-bottom: -2.5em;
 }
 
-.split.selecting .long-break::before {
-    content: " ";
+.split.selecting .long-break {
+    height: var(--fold-height);
 }
 
 .split.selecting .reference {

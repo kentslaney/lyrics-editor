@@ -512,7 +512,7 @@ class DoubleSpaced {
         document.addEventListener("keydown", unscroll)
         document.addEventListener("keypress", unscroll)
         this.caretMove(this.foreground, this.unfold.bind(this))
-        this.foreground.addEventListener("blur", this.join.bind(this))
+        // this.foreground.addEventListener("blur", this.join.bind(this))
         this.reference.addEventListener("keypress", e => e.preventDefault())
         this.foreground.addEventListener("mousedown", () => {
             this.join()
@@ -605,6 +605,12 @@ class DoubleSpaced {
 
         this.split(undefined, start + bbox.height)
         this.fgCase.scrollTop = 0
+
+        window.setTimeout(() => {
+            this.wrapper.classList.add("selecting")
+            this.reference.style.setProperty("--fold-height",
+                this.fold.getBoundingClientRect().height + "px")
+        }, 100)
     }
 
     split(line, clientY) {

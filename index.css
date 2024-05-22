@@ -143,13 +143,19 @@ body {
     margin-top: calc(-1 * var(--offset));
 }
 
+.fold {
+    height: 0;
+    overflow: hidden
+}
+
 .split .fold {
+    height: initial;
+    overflow: initial;
     background: #eee;
     transform: translateY(var(--offset));
     position: relative;
     z-index: 2;
     min-height: 2.5em;
-    /* min-height: 4.2em; */
 }
 
 .split .background::before {
@@ -256,3 +262,26 @@ body {
         font-size: 1.5rem;
     }
 }
+
+.fold {
+    font-family: monospace;
+}
+
+.fold > span {
+    width: 1.414em; /* < 2 can handle sequence of 1 character words */
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.fold > span > span {
+    position: relative;
+    display: inline-block;
+}
+
+.fold > span > span > span {
+    display: inline-block;
+    margin-bottom: 70.71%; /* sqrt(2) / 2 */
+    transform-origin: bottom left;
+    transform: rotate(45deg) translateY(-0.2929em); /* 1 - sqrt(2) / 2 */
+}
+

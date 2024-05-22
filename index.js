@@ -413,7 +413,10 @@ class DoubleSpaced {
         this.foreground.addEventListener("input", this.update.bind(this))
         this.foreground.addEventListener("input", this.save.bind(this))
         this.foreground.addEventListener("input", debounce(
-            this.debounce_ms, this.parse.bind(this)))
+                this.debounce_ms, () => {
+            this.parse()
+            this.unfold()
+        }))
         new ResizeObserver(this.resize.bind(this)).observe(this.reference)
         this.bindFold()
         if (load) this.load()

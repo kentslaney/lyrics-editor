@@ -189,7 +189,7 @@ body {
     color: #444;
 }
 
-.split .long-break, .split .below-fold {
+.long-break, .split .below-fold {
     margin-bottom: -2.5em;
 }
 

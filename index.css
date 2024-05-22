@@ -169,6 +169,10 @@ body {
     overflow: hidden;
 }
 
+#page-status a {
+    color: #444;
+}
+
 @media not (any-pointer: fine) {
     .double-spaced {
         border-width: 0 0 1px 0;

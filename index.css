@@ -228,6 +228,9 @@ body {
 .line-ref {
     visibility: hidden;
     position: absolute;
+}
+
+.reference > .line-ref {
     left: 0.5em;
     right: 0.5em;
 }

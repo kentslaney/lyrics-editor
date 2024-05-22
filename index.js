@@ -577,20 +577,16 @@ class DoubleSpaced {
         const div = this.container.appendChild(document.createElement("div"))
         div.classList.add("line-ref")
         const last = substr.match(/(?<=^|\n)[^\n]*$/)[0]
-        div.innerText = last
+        const rewrite = div.appendChild(document.createTextNode(last))
         const bbox = div.getBoundingClientRect()
 
         const eol = div.appendChild(document.createElement("span"))
         eol.innerText = " "
-        const cutoff = eol.previousSibling
         const char = eol.getBoundingClientRect()
-        eol.innerText = "\u200C"
-        const bottom = eol.getBoundingClientRect().bottom
 
         const end = this.foreground.value.slice(offset - last.length)
             .match(/^[^\n]*(?=\n|$)/)[0]
-        if (cutoff) div.removeChild(cutoff)
-        const rewrite = div.insertBefore(document.createTextNode(end), eol)
+        rewrite.textContent = end
         const size = parseInt(this.props.fontSize)
 
         let ref = eol.getBoundingClientRect(), wrapped
@@ -599,7 +595,7 @@ class DoubleSpaced {
             wrapped = Math.round(clientX / char.width)
             rewrite.textContent = rewrite.textContent.slice(0, -wrapped)
             ref = eol.getBoundingClientRect()
-        } while(ref.bottom !== bottom && rewrite.textContent !== "")
+        } while(ref.bottom !== char.bottom && rewrite.textContent !== "")
 
         if (this.lineRef !== null)
             this.lineRef.parentElement?.removeChild(this.lineRef)
@@ -622,6 +618,8 @@ class DoubleSpaced {
 
         this.split(undefined, start + bbox.height)
         this.fgCase.scrollTop = 0
+        this.reference.style.setProperty("--fold-height",
+            this.fold.getBoundingClientRect().height + "px")
     }
 
     hoistBelow() {

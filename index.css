@@ -193,8 +193,8 @@ body {
     display: inline;
 }
 
-.split .below-fold {
-    margin-bottom: -2.5em;
+.split .below-fold + br {
+    display: none;
 }
 
 .split .below-fold {

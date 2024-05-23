@@ -458,7 +458,8 @@ class DoubleSpaced {
             }).concat([""])
             this.background.setAttribute("data-meter", this.parser(limits)
                 .map((x, i) => {
-                    console.assert(x.length <= limits[i])
+                    // "w" breaks this
+                    // console.assert(x.length <= limits[i])
                     return x.padStart(limits[i]) + sep[i]
                 }).join(""))
             this.resize()

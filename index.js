@@ -588,15 +588,17 @@ class DoubleSpaced {
         const div = this.container.appendChild(document.createElement("div"))
         div.classList.add("line-ref")
         const last = substr.match(/(?<=^|\n)[^\n]*$/)[0]
-        const rewrite = div.appendChild(document.createTextNode(last))
+        const end = this.foreground.value.slice(offset - last.length)
+            .match(/^[^\n]*(?=\n|$)/)[0]
+        const extra = end.slice(last.length).search(this.editor.split)
+        const wrap = end.slice(0, last.length + extra)
+        const rewrite = div.appendChild(document.createTextNode(wrap))
         const bbox = div.getBoundingClientRect()
 
         const eol = div.appendChild(document.createElement("span"))
         eol.innerText = " "
         const char = eol.getBoundingClientRect()
 
-        const end = this.foreground.value.slice(offset - last.length)
-            .match(/^[^\n]*(?=\n|$)/)[0]
         rewrite.textContent = end
         const size = parseInt(this.props.fontSize)
 

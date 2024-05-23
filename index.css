@@ -264,7 +264,13 @@ body {
     .double-spaced {
         border-width: 0 0 1px 0;
         border-color: #000 !important;
-        /* padding-bottom: 0.5em; */
+    }
+}
+
+@media not (any-pointer: fine) { /* should be based on screen size */
+    .fold > span > span > span {
+        transform: rotate(90deg) translateX(-0.5em) !important;
+        margin-bottom: 100% !important;
     }
 }
 

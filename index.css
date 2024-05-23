@@ -51,12 +51,8 @@
     visibility: hidden;
 }
 
-.reference::before, .reference::after {
+.reference::after {
     content: '\200B'
-}
-
-.line-ref:first-child ~ .below-fold {
-    margin-top: calc(var(--fold-hides) - 2.5em);
 }
 
 #load-dict {

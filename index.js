@@ -433,7 +433,7 @@ class DoubleSpaced {
     }
 
     update() {
-        this.reference.innerText = this.foreground.value
+        this.reference.innerText = "\u200B" + this.foreground.value
     }
 
     resize(e) {
@@ -618,7 +618,7 @@ class DoubleSpaced {
 
         const long = end.length - wrapped > last.length
         const br = long ? el : el?.nextElementSibling;
-        let ele = el.nodeType === 1 ? br.nextSibling : el
+        let ele = el.nodeType === 1 ? br?.nextSibling : el
         if (long) {
             this.reference.insertBefore(this.container.removeChild(div), br)
             const belowCase = document.createElement("div")
@@ -764,7 +764,7 @@ class DoubleSpaced {
                     offset += el.innerText.length
             }
         }
-        return offset
+        return offset - 1
     }
 
     forward(e) {

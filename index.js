@@ -535,7 +535,9 @@ class DoubleSpaced {
                 this.fold.getBoundingClientRect().height + "px")
         })
         window.addEventListener("mouseup", e => {
-            if (selectionEndOOB || e.target === this.reference) this.forward(e)
+            if (selectionEndOOB ||
+                    e.target.closest(".reference") === this.reference)
+                this.forward(e)
             this.wrapper.classList.remove("selecting")
             selectionEndOOB = false
         })

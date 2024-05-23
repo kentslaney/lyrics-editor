@@ -69,6 +69,16 @@
     margin: 2em auto;
 }
 
+#options {
+    float: right;
+    margin: 1px 1em;
+}
+
+#options input {
+    margin: 0 0 0 0.25em;
+    vertical-align: middle;
+}
+
 #collapsed {
     display: none;
 }
@@ -118,7 +128,7 @@ body {
     --offset: 0px;
 }
 
-.split .container {
+.splittable.split .container {
     visibility: initial;
     height: initial;
     margin-top: calc(1em + var(--offset));
@@ -126,7 +136,7 @@ body {
     width: 100%;
 }
 
-.split .foreground-case {
+.splittable.split .foreground-case {
     height: var(--offset) !important;
     overflow: hidden;
     padding-bottom: 2.5em;
@@ -138,7 +148,7 @@ body {
     width: 100%;
 }
 
-.split .reference {
+.splittable.split .reference {
     position: relative;
     margin-top: calc(-1 * var(--offset));
 }
@@ -148,7 +158,7 @@ body {
     overflow: hidden
 }
 
-.split .fold {
+.splittable.split .fold {
     height: initial;
     overflow: initial;
     background: #eee;
@@ -158,7 +168,7 @@ body {
     min-height: 2.5em; /* covers extra line of textarea */
 }
 
-.split .background::before {
+.splittable.split .background::before {
     position: absolute;
     overflow: hidden;
     height: var(--offset);
@@ -167,21 +177,21 @@ body {
     left: 0.5em;
 }
 
-.split .background::after {
+.splittable.split .background::after {
     content: attr(data-meter);
     display: block;
     margin-top: calc(-1 * var(--offset));
     pointer-events: none;
 }
 
-.split .background-case {
+.splittable.split .background-case {
     position: initial;
     height: 0;
     margin-top: var(--offset);
     margin-bottom: calc(-1 * var(--offset));
 }
 
-.split .background {
+.splittable.split .background {
     overflow: hidden;
 }
 
@@ -193,36 +203,36 @@ body {
     display: inline;
 }
 
-.split .below-fold + br {
+.below-fold + br {
     display: none;
 }
 
-.split .below-fold {
+.splittable.split .below-fold {
     position: relative;
     overflow: hidden;
     margin-top: var(--fold-hides);
 }
 
-.split .below-fold > div {
+.splittable.split .below-fold > div {
     margin-top: calc(-1 * var(--fold-hides));
 }
 
-.split.selecting .long-break {
+.splittable.split.selecting .long-break {
     display: block;
     height: var(--fold-height);
 }
 
-.split.selecting .reference {
+.splittable.split.selecting .reference {
     padding-top: 1em;
     transform: translateY(calc(-1em - var(--fold-height)));
 }
 
-.split.selecting .container {
+.splittable.split.selecting .container {
     overflow: visible;
     z-index: 1;
 }
 
-.split.selecting .foreground {
+.splittable.split.selecting .foreground {
     visibility: hidden;
 }
 
@@ -246,7 +256,7 @@ body {
     padding: 0;
 }
 
-.split.selecting .reference > .line-ref {
+.splittable.split.selecting .reference > .line-ref {
     visibility: visible;
 }
 
@@ -329,7 +339,7 @@ body {
     display: inline-block;
 }
 
-.split .fold::after {
+.splittable.split .fold::after {
     content: '';
     width: var(--word-width);
     display: block;
@@ -349,7 +359,7 @@ body {
     content: '\2003\2022\2003';
 }
 
-.split .close {
+.splittable.split .close {
     position: absolute;
     display: inline-block;
     height: 2em;
@@ -359,7 +369,7 @@ body {
     transform: translateY(-50%);
 }
 
-.split .close::before, .split .close::after {
+.splittable.split .close::before, .splittable.split .close::after {
     content: '';
     display: block;
     height: 0.25em;
@@ -371,11 +381,11 @@ body {
     top: calc(50% - 0.125em);
 }
 
-.split .close::before {
+.splittable.split .close::before {
     transform: rotate(45deg);
 }
 
-.split .close::after {
+.splittable.split .close::after {
     transform: rotate(-45deg);
 }
 

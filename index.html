@@ -9,7 +9,7 @@
 <script type="text/javascript" src="index.js"></script>
 </head>
 <body>
-    <div class="double-spaced">
+    <div class="double-spaced splittable">
         <div class="fold"></div>
         <div class="foreground-case">
             <textarea class="foreground" name="main" onfocus="firstFocus()">
@@ -31,6 +31,10 @@ Refrigerator</textarea>
         <button id="help" onclick="this.previousElementSibling.checked ^= 1">
             <label for="collapsed" onclick="event.stopPropagation()"></label>
         </button>
+        <span id="options">
+            <label for="pronunciations">pronunciations</label>
+            <input type="checkbox" id="pronunciations" checked>
+        </span>
         <div id="directions">
 <code>/</code> represents a stressed syllable, <!-- newline to make clearer -->
 <code>X</code> represents an unstressed syllable. <!-- while editing src -->

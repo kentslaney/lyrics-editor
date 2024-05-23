@@ -856,4 +856,8 @@ window.addEventListener("load", async function() {
             throw e
         })
     })
+    document.getElementById("pronunciations").addEventListener("change", e => {
+        if (e.target.checked) pre.classList.add("splittable")
+        else pre.classList.remove("splittable")
+    })
 })

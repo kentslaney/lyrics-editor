@@ -625,7 +625,7 @@ class DoubleSpaced {
         const br = long ? el : el?.nextElementSibling;
         let ele = el.nodeType === 1 ? br?.nextSibling : el
         if (long) {
-            this.reference.insertBefore(this.container.removeChild(div), br)
+            this.reference.insertBefore(this.container.removeChild(div), ele)
             const belowCase = document.createElement("div")
             belowCase.classList.add("below-fold")
             this.reference.insertBefore(belowCase, ele)

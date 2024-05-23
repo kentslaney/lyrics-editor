@@ -788,7 +788,7 @@ class DoubleSpaced {
                     const ele = el.getElementsByClassName("below-cutoff")[0]
                     offset += ele.innerText.length - sliding
                 } else if (el.classList.contains("line-ref"))
-                    offset += el.innerText.length
+                    offset += el.textContent.length
             }
         }
         return offset - 1

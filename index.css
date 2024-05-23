@@ -155,7 +155,7 @@ body {
     transform: translateY(var(--offset));
     position: relative;
     z-index: 2;
-    min-height: 2.5em; /* TODO: remove */
+    min-height: 2.5em; /* covers extra line of textarea */
 }
 
 .split .background::before {
@@ -189,7 +189,11 @@ body {
     color: #444;
 }
 
-.long-break, .split .below-fold {
+.long-break {
+    display: inline;
+}
+
+.split .below-fold {
     margin-bottom: -2.5em;
 }
 
@@ -204,6 +208,7 @@ body {
 }
 
 .split.selecting .long-break {
+    display: block;
     height: var(--fold-height);
 }
 

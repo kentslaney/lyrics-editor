@@ -396,7 +396,6 @@ function debounce(ms, f) {
 }
 
 class DoubleSpaced {
-    input_debounce_ms = 1000
     resize_debounce_ms = 100
     constructor(cursor, wrapper, load = true) {
         this.editor = new Editing(cursor)
@@ -413,11 +412,6 @@ class DoubleSpaced {
         this.reference.classList.add("reference")
         this.foreground.addEventListener("input", this.update.bind(this))
         this.foreground.addEventListener("input", this.save.bind(this))
-        this.foreground.addEventListener("input", debounce(
-                this.input_debounce_ms, () => {
-            this.parse()
-            this.unfold()
-        }))
         this.reflow = debounce(this.resize_debounce_ms, this.unfold.bind(this))
         new ResizeObserver(this.resize.bind(this)).observe(this.reference)
         this.bindFold()
@@ -517,12 +511,21 @@ class DoubleSpaced {
         }
         document.addEventListener("keydown", unscroll)
         document.addEventListener("keypress", unscroll)
-        this.caretMove(this.foreground, this.unfold.bind(this))
-        this.foreground.addEventListener("blur", this.join.bind(this))
-        this.reference.addEventListener("keypress", e => e.preventDefault())
-        this.foreground.addEventListener("mousedown", () => {
-            this.join()
+        this.caretMove(this.foreground, () => {
+            this.parse()
+            this.unfold()
         })
+        // this.foreground.addEventListener("blur", this.join.bind(this))
+        this.reference.addEventListener("keypress", e => e.preventDefault())
+        this.reference.addEventListener("input", e => {
+            this.foreground.value = this.reference.innerText
+            this.forward(e)
+            this.wrapper.classList.remove("selecting")
+            this.parse()
+            this.unfold()
+        })
+        this.foreground.addEventListener("mousedown", this.join.bind(this))
+        this.foreground.addEventListener("touchstart", this.join.bind(this))
         let selectionEndOOB = false
         this.reference.addEventListener("selectstart", e => {
             selectionEndOOB = true
@@ -624,17 +627,18 @@ class DoubleSpaced {
             this.reference.insertBefore(belowCase, br.nextElementSibling)
             belowCase.style.setProperty("--fold-hides", bbox.height + "px")
         }
-        this.reference.insertBefore(document.createElement("div"), br)
-            .classList.add("long-break")
+        this.reference.insertBefore(document.createElement("div"),
+            br?.nextSibling).classList.add("long-break")
 
         this.split(undefined, start + bbox.height)
         this.fgCase.scrollTop = 0
-        this.reference.style.setProperty("--fold-height",
-            this.fold.getBoundingClientRect().height + "px")
 
         const caret = offset === this.foreground.selectionStart
         this.expand(breaks, caret ? last.length : -1,
             ...(above === 0 ? [] : [headline - above, headline]))
+
+        this.reference.style.setProperty("--fold-height",
+            this.fold.getBoundingClientRect().height + "px")
     }
 
     expand(breaks, cursor, start, end) {
@@ -646,8 +650,10 @@ class DoubleSpaced {
         const sep = this.editor.separators
         const raw = this.editor.raw
         let i = 0, j = 0, char = 0, pos = 0, active = null
-        for (let seen = 0; seen < breaks; seen += (sep[i++] === "\n")) {}
-        while (start !== undefined && char < start) char += raw[i++].length + 1
+        for (let seen = 0; i < sep.length && seen < breaks;)
+            seen += (sep[i++] === "\n")
+        while (start !== undefined && char < start && i < raw.length)
+            char += raw[i++].length + 1
         for (j = i; (end === undefined || char < end) && j < raw.length &&
                 (j === i || sep[j - 1] !== "\n"); char += raw[j++].length + 1) {
             const ele = el.appendChild(document.createElement("span"))
@@ -762,12 +768,12 @@ class DoubleSpaced {
         const range = sel.getRangeAt(0)
         let hi = range.startContainer
         const lo = range.endContainer
-        const off = [range.startOffset, range.endOffset]
+        let off = [range.startOffset, range.endOffset]
         if (this.lineRef?.parentElement === this.reference) {
-            if (hi?.parentElement === this.lineRef)
-                hi = this.lineRef.nextElementSibling // long-break
-                    .nextElementSibling // br
-                    .nextSibling
+            if (hi?.parentElement === this.lineRef) {
+                hi = this.lineRef.previousSibling
+                off[0] += hi.textContent.length + 1
+            }
             this.lineRef.parentElement?.removeChild(this.lineRef)
         }
         const start = this.lineCount(hi, off[0])

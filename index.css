@@ -55,6 +55,10 @@
     content: '\200B'
 }
 
+.line-ref:first-child ~ .below-fold {
+    margin-top: calc(var(--fold-hides) - 2.5em);
+}
+
 #load-dict {
     display: none;
     padding: 1px 0.5em;

@@ -515,7 +515,7 @@ class DoubleSpaced {
             this.parse()
             this.unfold()
         })
-        this.foreground.addEventListener("blur", this.join.bind(this))
+        // this.foreground.addEventListener("blur", this.join.bind(this))
         this.reference.addEventListener("keypress", e => e.preventDefault())
         this.reference.addEventListener("input", e => {
             this.foreground.value = this.reference.innerText
@@ -618,18 +618,20 @@ class DoubleSpaced {
 
         const long = end.length - wrapped > last.length
         const br = long ? el : el?.nextElementSibling;
+        let ele = el.nodeType === 1 ? br.nextSibling : el
         if (long) {
             this.reference.insertBefore(this.container.removeChild(div), br)
-            const below = document.createElement("div")
-            below.appendChild(this.reference.removeChild(br.nextSibling))
             const belowCase = document.createElement("div")
             belowCase.classList.add("below-fold")
+            this.reference.insertBefore(belowCase, ele)
+            const below = document.createElement("div")
+            below.appendChild(this.reference.removeChild(ele))
             belowCase.appendChild(below)
-            this.reference.insertBefore(belowCase, br.nextSibling)
+            ele = belowCase
             belowCase.style.setProperty("--fold-hides", bbox.height + "px")
         }
         this.reference.insertBefore(document.createElement("div"),
-            br?.nextSibling).classList.add("long-break")
+            ele).classList.add("long-break")
 
         this.split(undefined, start + bbox.height)
         this.fgCase.scrollTop = 0

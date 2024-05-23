@@ -631,8 +631,12 @@ class DoubleSpaced {
             const belowCase = document.createElement("div")
             belowCase.classList.add("below-fold")
             this.reference.insertBefore(belowCase, ele)
+            const cutoff = belowCase.appendChild(document.createElement("div"))
+            cutoff.classList.add("below-cutoff")
+            cutoff.innerText = end.slice(headline)
             const below = document.createElement("div")
             below.appendChild(this.reference.removeChild(ele))
+            below.classList.add("below-init")
             belowCase.appendChild(below)
             ele = belowCase
             belowCase.style.setProperty("--fold-hides", bbox.height + "px")
@@ -649,6 +653,11 @@ class DoubleSpaced {
 
         this.reference.style.setProperty("--fold-height",
             this.fold.getBoundingClientRect().height + "px")
+        // window.setTimeout(() => {
+        //     this.wrapper.classList.add("selecting")
+        //     this.reference.style.setProperty("--fold-height",
+        //         this.fold.getBoundingClientRect().height + "px")
+        // }, 1000)
     }
 
     expand(breaks, cursor, start, end) {
@@ -738,7 +747,7 @@ class DoubleSpaced {
     hoistBelow() {
         let folded = this.wrapper.getElementsByClassName("below-fold")
         for (const el of folded) {
-            const ele = el.firstElementChild
+            const ele = el.getElementsByClassName("below-init")[0]
             el.parentElement.insertBefore(ele.removeChild(ele.firstChild), el)
             el.parentElement.removeChild(el)
         }
@@ -761,18 +770,25 @@ class DoubleSpaced {
         if (el.parentElement?.parentElement?.classList.contains("below-fold"))
             el = el.parentElement.parentElement
         let sliding = 0
+        if (el?.parentElement === this.lineRef) {
+            el = this.lineRef.previousSibling
+            offset += el === null ? 0 : el.textContent.length + 1
+        }
         if (el === this.reference) {
             el = this.reference.childNodes[offset]
             offset = 0
             const prev = el.previousSibling
             sliding = prev.nodeType === 1 && prev.tagName === "BR"
         }
-        while ((el = el.previousSibling) !== null) {
+        while ((el = el?.previousSibling) !== null) {
             if (el.nodeType === 3) offset += el.textContent.length
             else if (el.nodeType === 1) {
                 if (el.tagName === "BR") offset++
-                else if (el.classList.contains("below-fold"))
-                    offset += el.innerText.length - sliding
+                else if (el.classList.contains("below-fold")) {
+                    const ele = el.getElementsByClassName("below-cutoff")[0]
+                    offset += ele.innerText.length - sliding
+                } else if (el.classList.contains("line-ref"))
+                    offset += el.innerText.length
             }
         }
         return offset - 1
@@ -782,18 +798,11 @@ class DoubleSpaced {
         const sel = window.getSelection()
         if (sel.type === "none") return
         const range = sel.getRangeAt(0)
-        let hi = range.startContainer
-        const lo = range.endContainer
-        let off = [range.startOffset, range.endOffset]
+        const start = this.lineCount(range.startContainer, range.startOffset)
+        const end = this.lineCount(range.endContainer, range.endOffset)
         if (this.lineRef?.parentElement === this.reference) {
-            if (hi?.parentElement === this.lineRef) {
-                hi = this.lineRef.previousSibling
-                off[0] += hi === null ? 0 : hi.textContent.length + 1
-            }
             this.lineRef.parentElement?.removeChild(this.lineRef)
         }
-        const start = hi === null ? off[0] : this.lineCount(hi, off[0])
-        const end = this.lineCount(lo, off[1])
         window.setTimeout(() => {
             this.foreground.focus()
             this.foreground.setSelectionRange(start, end)

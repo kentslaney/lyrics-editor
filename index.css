@@ -209,12 +209,11 @@ body {
 
 .splittable.split .below-fold {
     position: relative;
-    overflow: hidden;
     margin-top: var(--fold-hides);
 }
 
-.splittable.split .below-fold > div {
-    margin-top: calc(-1 * var(--fold-hides));
+.below-init {
+    display: none;
 }
 
 .splittable.split.selecting .long-break {
@@ -243,6 +242,7 @@ body {
 .line-ref {
     visibility: hidden;
     position: absolute;
+    display: inline;
 }
 
 .reference > .line-ref {

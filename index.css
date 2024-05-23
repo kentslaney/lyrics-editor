@@ -291,10 +291,10 @@ body {
 
 .fold {
     font-family: monospace;
-    user-select: none;
 }
 
 .fold > span {
+    user-select: none;
     display: inline-block;
     white-space: nowrap;
     margin-left: var(--left-pad);
@@ -347,5 +347,35 @@ body {
 
 .sep::before {
     content: '\2003\2022\2003';
+}
+
+.split .close {
+    position: absolute;
+    display: inline-block;
+    height: 2em;
+    width: 2em;
+    right: 0.5em;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.split .close::before, .split .close::after {
+    content: '';
+    display: block;
+    height: 0.25em;
+    background: #888;
+    position: absolute;
+    width: 100%;
+    transform-origin: center center;
+    border-radius: 0.125em;
+    top: calc(50% - 0.125em);
+}
+
+.split .close::before {
+    transform: rotate(45deg);
+}
+
+.split .close::after {
+    transform: rotate(-45deg);
 }
 

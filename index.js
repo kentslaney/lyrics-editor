@@ -515,7 +515,7 @@ class DoubleSpaced {
             this.parse()
             this.unfold()
         })
-        // this.foreground.addEventListener("blur", this.join.bind(this))
+        this.foreground.addEventListener("blur", this.join.bind(this))
         this.reference.addEventListener("keypress", e => e.preventDefault())
         this.reference.addEventListener("input", e => {
             this.foreground.value = this.reference.innerText
@@ -575,6 +575,7 @@ class DoubleSpaced {
         const substr = this.foreground.value.slice(0, offset)
         const breaks = (substr.match(/\n/g)||[]).length
         let el = this.reference.firstChild
+        while(el === this.lineRef) el = el.nextSibling
         for (let i = 0; el !== null && i < breaks; i += el?.nodeType === 1) {
             while((el = el.nextSibling) === this.lineRef){}
         }
@@ -624,7 +625,7 @@ class DoubleSpaced {
             const belowCase = document.createElement("div")
             belowCase.classList.add("below-fold")
             belowCase.appendChild(below)
-            this.reference.insertBefore(belowCase, br.nextElementSibling)
+            this.reference.insertBefore(belowCase, br.nextSibling)
             belowCase.style.setProperty("--fold-hides", bbox.height + "px")
         }
         this.reference.insertBefore(document.createElement("div"),
@@ -668,6 +669,8 @@ class DoubleSpaced {
             pos = center
         }
         this.container.removeChild(el)
+        // this.fold.appendChild(document.createElement("div"))
+        //     .classList.add("close")
         if (active !== null) this.suggest(...active)
     }
 

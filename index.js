@@ -679,6 +679,7 @@ class DoubleSpaced {
         // this.fold.appendChild(document.createElement("div"))
         //     .classList.add("close")
         if (active !== null) this.suggest(...active)
+        else this.fold.style.removeProperty("--word-width")
     }
 
     suggest(idx, left, width, pad, which) {

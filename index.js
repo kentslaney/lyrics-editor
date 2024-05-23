@@ -592,7 +592,7 @@ class DoubleSpaced {
             .match(/^[^\n]*(?=\n|$)/)[0]
         const extra = end.slice(last.length).search(this.editor.split)
         const broken = last.slice(-1).match(this.editor.split)
-        const wrap = end.slice(0, broken ? 0 :
+        const wrap = end.slice(0, broken ? last.length :
             extra === -1 ? end.length : last.length + extra)
         const rewrite = div.appendChild(document.createTextNode(wrap))
         const bbox = div.getBoundingClientRect()

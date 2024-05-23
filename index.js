@@ -753,16 +753,19 @@ class DoubleSpaced {
     lineCount(el, offset) {
         if (el.parentElement?.parentElement?.classList.contains("below-fold"))
             el = el.parentElement.parentElement
+        let sliding = 0
         if (el === this.reference) {
             el = this.reference.childNodes[offset]
             offset = 0
+            const prev = el.previousSibling
+            sliding = prev.nodeType === 1 && prev.tagName === "BR"
         }
         while ((el = el.previousSibling) !== null) {
             if (el.nodeType === 3) offset += el.textContent.length
             else if (el.nodeType === 1) {
                 if (el.tagName === "BR") offset++
                 else if (el.classList.contains("below-fold"))
-                    offset += el.innerText.length - 1
+                    offset += el.innerText.length - sliding
             }
         }
         return offset - 1

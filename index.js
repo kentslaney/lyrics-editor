@@ -781,11 +781,11 @@ class DoubleSpaced {
         if (this.lineRef?.parentElement === this.reference) {
             if (hi?.parentElement === this.lineRef) {
                 hi = this.lineRef.previousSibling
-                off[0] += hi.textContent.length + 1
+                off[0] += hi === null ? 0 : hi.textContent.length + 1
             }
             this.lineRef.parentElement?.removeChild(this.lineRef)
         }
-        const start = this.lineCount(hi, off[0])
+        const start = hi === null ? off[0] : this.lineCount(hi, off[0])
         const end = this.lineCount(lo, off[1])
         window.setTimeout(() => {
             this.foreground.focus()

@@ -623,7 +623,7 @@ class DoubleSpaced {
 
         const long = end.length - wrapped > last.length
         const br = long ? el : el?.nextElementSibling;
-        let ele = el.nodeType === 1 ? br?.nextSibling : el
+        let ele = br.nodeType === 1 ? br?.nextSibling : br
         if (long) {
             this.reference.insertBefore(this.container.removeChild(div), ele)
             const belowCase = document.createElement("div")

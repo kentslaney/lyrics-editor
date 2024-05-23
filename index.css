@@ -1,10 +1,16 @@
+.double-spaced {
+    --pad-left: 0.5em;
+    --pad-right: 0.5em;
+    --line-space: 2.5;
+}
+
 .foreground, .background, .reference, .container > .line-ref, .word-ref {
-    line-height: 2.5;
+    line-height: var(--line-space);
     margin: 0;
     font-family: monospace;
     white-space: pre-wrap;
-    padding-left: 0.5em;
-    padding-right: 0.5em;
+    padding-left: var(--pad-left);
+    padding-right: var(--pad-right);
 }
 
 .foreground {
@@ -12,7 +18,7 @@
     padding-top: 1em;
     padding-bottom: 0;
     outline: 0;
-    width: calc(100% - 1em);
+    width: calc(100% - var(--pad-left) - var(--pad-right));
     border-width: 0;
     resize: none;
     overflow: hidden;
@@ -139,7 +145,7 @@ body {
 .splittable.split .foreground-case {
     height: var(--offset) !important;
     overflow: hidden;
-    padding-bottom: 2.5em;
+    padding-bottom: calc(var(--line-space) * 1em);
 }
 
 .foreground-case {
@@ -165,7 +171,7 @@ body {
     transform: translateY(var(--offset));
     position: relative;
     z-index: 2;
-    min-height: 2.5em; /* covers extra line of textarea */
+    min-height: calc(var(--line-space) * 1em); /* covers extra line of input */
 }
 
 .splittable.split .background::before {
@@ -173,8 +179,8 @@ body {
     overflow: hidden;
     height: var(--offset);
     top: 0;
-    right: 0.5em;
-    left: 0.5em;
+    right: var(--pad-right);
+    left: var(--pad-left);
 }
 
 .splittable.split .background::after {
@@ -246,8 +252,8 @@ body {
 }
 
 .reference > .line-ref {
-    left: 0.5em;
-    right: 0.5em;
+    left: var(--pad-left);
+    right: var(--pad-right);
 }
 
 .word-ref {
@@ -341,7 +347,7 @@ body {
 
 .fold::before {
     content: '';
-    width: 0.7071em;
+    width: var(--pad-left);
     display: inline-block;
 }
 
@@ -351,47 +357,18 @@ body {
     display: block;
     height: 2px;
     position: absolute;
-    left: calc(var(--word-offset));
+    left: calc(var(--word-offset) + var(--pad-left));
     top: 0;
     background: #000;
 }
 
 .suggestions {
     color: red;
-    padding-left: 0.5em;
+    padding-left: var(--pad-left);
+    padding-right: var(--pad-right);
 }
 
 .sep::before {
     content: '\2003\2022\2003';
-}
-
-.splittable.split .close {
-    position: absolute;
-    display: inline-block;
-    height: 2em;
-    width: 2em;
-    right: 0.5em;
-    top: 50%;
-    transform: translateY(-50%);
-}
-
-.splittable.split .close::before, .splittable.split .close::after {
-    content: '';
-    display: block;
-    height: 0.25em;
-    background: #888;
-    position: absolute;
-    width: 100%;
-    transform-origin: center center;
-    border-radius: 0.125em;
-    top: calc(50% - 0.125em);
-}
-
-.splittable.split .close::before {
-    transform: rotate(45deg);
-}
-
-.splittable.split .close::after {
-    transform: rotate(-45deg);
 }
 

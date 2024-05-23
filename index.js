@@ -604,17 +604,17 @@ class DoubleSpaced {
         const char = eol.getBoundingClientRect()
 
         rewrite.textContent = end
-        const size = parseInt(this.props.fontSize)
+        const pad = parseFloat(this.props.paddingLeft)
 
         let ref = eol.getBoundingClientRect(), wrapped
         while(ref.bottom !== char.bottom && rewrite.textContent !== "") {
-            const clientX = ref.left - bbox.left - size / 2
+            const clientX = ref.left - bbox.left - pad
             wrapped = Math.round(clientX / char.width)
             rewrite.textContent = rewrite.textContent.slice(0, -wrapped)
             ref = eol.getBoundingClientRect()
         }
 
-        const clientX = ref.left - bbox.left - size / 2
+        const clientX = ref.left - bbox.left - pad
         const above = Math.round(clientX / char.width)
         const headline = rewrite.textContent.length
 
@@ -679,11 +679,12 @@ class DoubleSpaced {
             ele.innerText = raw[j]
             if (j < sep.length) el.appendChild(document.createTextNode(sep[j]))
             const bbox = ele.getBoundingClientRect()
-            const center = bbox.left - container + bbox.width / 2
+            const clientX = bbox.left - container
+            const center = clientX + bbox.width / 2
             const cur = cursor >= char && cursor <= char + raw[j].length
             const pad = center - pos
-            const which = this.annotate(j, bbox.left, bbox.width, pad, cur)
-            if (cur) active = [j, bbox.left, bbox.width, pad, which]
+            const which = this.annotate(j, clientX, bbox.width, pad, cur)
+            if (cur) active = [j, clientX, bbox.width, pad, which]
             pos = center
         }
         this.container.removeChild(el)
@@ -788,7 +789,8 @@ class DoubleSpaced {
                     const ele = el.getElementsByClassName("below-cutoff")[0]
                     offset += ele.innerText.length - sliding
                 } else if (el.classList.contains("line-ref"))
-                    offset += el.textContent.length
+                    offset += el.textContent.length + (
+                        el.previousSibling === null);
             }
         }
         return offset - 1

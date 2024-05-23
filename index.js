@@ -762,7 +762,7 @@ class DoubleSpaced {
             else if (el.nodeType === 1) {
                 if (el.tagName === "BR") offset++
                 else if (el.classList.contains("below-fold"))
-                    offset += el.innerText.length
+                    offset += el.innerText.length - 1
             }
         }
         return offset - 1

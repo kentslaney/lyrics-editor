@@ -475,9 +475,9 @@ class DoubleSpaced {
             const curly = raw.match(this.editor.manual)
             if (curly) return curly[1].replace(/\*/g, "X")
             if (!x) return raw ? "?" : ""
-            const round = raw.match(this.editor.version)
-            if (round) {
-                const version = parseInt(round[1])
+            const pronunciation = raw.match(this.editor.version)
+            if (pronunciation) {
+                const version = parseInt(pronunciation[1])
                 return version < x.length ? x[version] : "?"
             }
             return x.reduce((a, b) => {
@@ -735,9 +735,9 @@ class DoubleSpaced {
     note(idx) {
         const options = this.editor.pronunciations[idx]
         if (options === undefined) return null
-        const round = this.editor.raw[idx].match(this.editor.version)
-        if (round) { // round brackets
-            const version = parseInt(round[1])
+        const pronunciation = this.editor.raw[idx].match(this.editor.version)
+        if (pronunciation) {
+            const version = parseInt(pronunciation[1])
             if (version >= options.length) return null
             return version
         }

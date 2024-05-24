@@ -341,7 +341,7 @@ class Editing {
 
     strip = /[^a-zA-Z']/g
     split = /[\s\-_]/g
-    version = /\(([0-9]+)\)[^a-zA-Z']*$/
+    version = /\{([0-9]+)\}[^a-zA-Z']*$/
     manual = /\{([/\*]*)\}[^a-zA-Z']*$/
 
     async update(value) {
@@ -803,7 +803,7 @@ class DoubleSpaced {
         const start = this.lineCount(range.startContainer, range.startOffset)
         const end = this.lineCount(range.endContainer, range.endOffset)
         if (this.lineRef?.parentElement === this.reference) {
-            this.lineRef.parentElement?.removeChild(this.lineRef)
+            this.reference.removeChild(this.lineRef)
         }
         window.setTimeout(() => {
             this.foreground.focus()

@@ -506,8 +506,8 @@ class DoubleSpaced {
     bindFold() {
         const unscroll = e => {
             if (e.key === "ArrowDown" || e.key === "ArrowRight") {
-                this.fgCase.scrollTop = 0;
-                window.setTimeout(() => { this.fgCase.scrollTop = 0 }, 0)
+                this.foreground.scrollTop = 0;
+                window.setTimeout(() => { this.foreground.scrollTop = 0 }, 0)
             }
         }
         document.addEventListener("keydown", unscroll)
@@ -526,7 +526,8 @@ class DoubleSpaced {
             this.unfold()
         })
         this.foreground.addEventListener("mousedown", this.join.bind(this))
-        this.foreground.addEventListener("touchstart", this.join.bind(this))
+        this.foreground.addEventListener("touchstart", this.join.bind(this), {
+            passive: true })
         let selectionEndOOB = false
         this.reference.addEventListener("selectstart", e => {
             selectionEndOOB = true
@@ -645,7 +646,7 @@ class DoubleSpaced {
             ele).classList.add("long-break")
 
         this.split(undefined, start + bbox.height)
-        this.fgCase.scrollTop = 0
+        this.foreground.scrollTop = 0
 
         const caret = offset === this.foreground.selectionStart
         this.expand(breaks, caret ? last.length : -1,
@@ -805,17 +806,19 @@ class DoubleSpaced {
         if (this.lineRef?.parentElement === this.reference) {
             this.reference.removeChild(this.lineRef)
         }
+        this.wrapper.classList.remove("split")
+        this.resize()
         window.setTimeout(() => {
-            this.foreground.focus()
             this.foreground.setSelectionRange(start, end)
+            this.foreground.focus()
         }, 0)
     }
-
 
     join(e) {
         if (e?.relatedTarget === this.reference) return
         this.wrapper.classList.remove("split")
-        this.fgCase.scrollTop = 0
+        this.foreground.scrollTop = 0
+        this.reference.style.setProperty("--fold-height", "0")
     }
 }
 
@@ -872,7 +875,10 @@ window.addEventListener("load", async function() {
             throw e
         })
     })
-    document.getElementById("pronunciations").addEventListener("change", e => {
+    const splittable = document.getElementById("pronunciations")
+    splittable.checked = JSON.parse(window.localStorage["pronunciations"])
+    splittable.addEventListener("change", e => {
+        window.localStorage["pronunciations"] = e.target.checked
         if (e.target.checked) pre.classList.add("splittable")
         else pre.classList.remove("splittable")
     })

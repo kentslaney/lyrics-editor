@@ -876,6 +876,8 @@ window.addEventListener("load", async function() {
         })
     })
     const splittable = document.getElementById("pronunciations")
+    if (!("pronunciations" in window.localStorage))
+        window.localStorage["pronunciations"] = true
     splittable.checked = JSON.parse(window.localStorage["pronunciations"])
     splittable.addEventListener("change", e => {
         window.localStorage["pronunciations"] = e.target.checked

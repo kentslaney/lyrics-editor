@@ -283,6 +283,7 @@ body {
 @media print {
     .double-spaced {
         border-width: 0 !important;
+        --offset: 0 !important;
     }
 
     .foreground {
@@ -291,6 +292,7 @@ body {
 
     .container {
         height: initial;
+        visibility: initial;
     }
 
     .background, .reference {
@@ -300,6 +302,11 @@ body {
     .reference {
         transform: translateY(1em);
         padding-bottom: 1em;
+        --fold-height: 0 !important;
+    }
+
+    .fold {
+        display: none;
     }
 
     #page-status {

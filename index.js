@@ -582,7 +582,7 @@ class DoubleSpaced {
     unfold() {
         this.hoistBelow()
         Array.prototype.map.call(this.wrapper.getElementsByClassName(
-            cls), x => { x.parentElement.removeChild(x) })
+            "long-break"), x => { x.parentElement.removeChild(x) })
         const offset = this.foreground.selectionEnd
         const substr = this.foreground.value.slice(0, offset)
         const breaks = (substr.match(/\n/g)||[]).length

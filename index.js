@@ -581,7 +581,8 @@ class DoubleSpaced {
     lineRef = null
     unfold() {
         this.hoistBelow()
-        this.clear("long-break")
+        Array.prototype.map.call(this.wrapper.getElementsByClassName(
+            cls), x => { x.parentElement.removeChild(x) })
         const offset = this.foreground.selectionEnd
         const substr = this.foreground.value.slice(0, offset)
         const breaks = (substr.match(/\n/g)||[]).length
@@ -773,11 +774,6 @@ class DoubleSpaced {
         const off = line * height + 0.5 * size;
         this.wrapper.style.setProperty("--offset", off + "px")
         this.reference.setAttribute("contenteditable", "true")
-    }
-
-    clear(cls) {
-        Array.prototype.map.call(this.wrapper.getElementsByClassName(
-            cls), x => { x.parentElement.removeChild(x) })
     }
 
     lineCount(el, offset) {

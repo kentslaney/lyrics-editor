@@ -424,9 +424,9 @@ class Editing {
             const curly = raw.match(this.manual)
             if (curly) return curly[1].replace(/\*/g, "X")
             if (!x) return raw ? "?" : ""
-            return x.reduce((a, b) => {
-                return b.split('').map((y, j) => y === a[j] ? y : "\\").join('')
-            })
+            return x.reduce((a, b) =>
+                [...new Array(Math.max(a.length, b.length)).keys()].map(j =>
+                    a[j] === b[j] ? a[j] : "\\").join(""))
         })
     }
 

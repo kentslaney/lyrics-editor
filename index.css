@@ -1,9 +1,14 @@
 body { --scroll-space: 95dvh; }
 
 .double-spaced {
-    --pad-left: 0.5em;
-    --pad-right: 0.5em;
+    --pad-blank: 0.5em;
+    --pad-right: var(--pad-blank);
+    --pad-left: var(--pad-blank);
     --line-space: 2.5;
+}
+
+.counted {
+    --pad-left: calc(var(--pad-blank) * 2 + var(--gutter-chars) * 0.5em);
 }
 
 .foreground, .background, .reference, .container > .line-ref, .word-ref {
@@ -288,6 +293,7 @@ body {
         padding-bottom: 0;
         --offset: 0 !important;
         --fold-height: 0 !important;
+        --pad-left: var(--pad-blank) !important;
     }
 
     .foreground {
@@ -322,7 +328,6 @@ body {
     }
 
     body {
-        font-size: 1.5rem;
         --scroll-space: 0 !important;
     }
 }
@@ -386,5 +391,28 @@ body {
 
 .sep::before {
     content: '\2003\2022\2003';
+}
+
+.gutter {
+    position: absolute;
+    top: 0;
+}
+
+.gutter div {
+    height: calc(var(--line-space) * 1em);
+    width: calc(var(--pad-left) - var(--pad-blank));
+    page-break-inside: avoid;
+    font-family: monospace;
+    line-height: var(--line-space);
+    text-align: right;
+    overflow: hidden;
+}
+
+.gutter div::before {
+    content: attr(data-count);
+}
+
+.fold-spacer {
+    margin-top: var(--fold-height);
 }
 

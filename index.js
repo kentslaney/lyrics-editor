@@ -334,9 +334,13 @@ class Edit {
 class Editing {
     value = ""
     words = []
-    pronunciations = []
+    _pronunciations = []
     constructor(cursor) {
         this.cursor = cursor
+        this._separators = this.memoize(this._separators)
+        this._raw = this.memoize(this._raw)
+        this._pronounce = this.memoize(this._pronounce)
+        this._meter = this.memoize(this._meter)
     }
 
     strip = /[^a-zA-Z']/g
@@ -361,23 +365,74 @@ class Editing {
             if (!rewrite) removing.splice(0, 0, i)
         })
         for (let i of removing) {
-            this.pronunciations.splice(i, 1)
+            this._pronunciations.splice(i, 1)
         }
         res.forEach((i, j) => {
             let [next, rewrite] = idx[j]
-            this.pronunciations.splice(next, rewrite ? 1 : 0, i)
+            this._pronunciations.splice(next, rewrite ? 1 : 0, i)
         })
-        console.assert(this.pronunciations.length === words.length)
+        // console.assert(this._pronunciations.length === words.length)
+        this.clearCache()
     }
 
-    get separators() {
+    cache = []
+    memoize(f) {
+        const idx = this.cache.push(undefined)
+        return () => {
+            if (this.cache[idx] === undefined)
+                this.cache[idx] = Object.freeze(f.call(this))
+            return this.cache[idx]
+        }
+    }
+
+    clearCache() {
+        this.cache = this.cache.map(x => undefined)
+    }
+
+    _separators() {
         const res = this.value.match(this.split)
         return res === null ? [] : res
     }
 
-    get raw() {
+    _raw() {
         return this.value.split(this.split)
     }
+
+    _pronounce() {
+        return this._pronunciations.map((x, i) => {
+            if (!x) return x
+            const pronunciation = this.raw[i].match(this.version)
+            if (pronunciation) {
+                const version = parseInt(pronunciation[1])
+                return version < x.length ? [x[version]] : undefined
+            }
+            return x
+        })
+    }
+
+    pronunciations(idx) {
+        if (idx === undefined) return this._pronounce()
+        else return this._pronounce()[idx]
+    }
+
+    _meter() {
+        const options = this.pronunciations().map(x => x?.map(y =>
+            y.replace(/[^012]/g, "").replace(/[12]/g, "/").replace(/0/g, "X")))
+        const raws = this.raw
+        return options.map((x, i) => {
+            const raw = raws[i]
+            const curly = raw.match(this.manual)
+            if (curly) return curly[1].replace(/\*/g, "X")
+            if (!x) return raw ? "?" : ""
+            return x.reduce((a, b) => {
+                return b.split('').map((y, j) => y === a[j] ? y : "\\").join('')
+            })
+        })
+    }
+
+    get separators() { return this._separators() }
+    get raw() { return this._raw() }
+    get meter() { return this._meter() }
 }
 
 function debounce(ms, f) {
@@ -403,6 +458,7 @@ class DoubleSpaced {
         this.foreground = this.wrapper.getElementsByClassName("foreground")[0]
         this.background = this.wrapper.getElementsByClassName("background")[0]
         this.fold = this.wrapper.getElementsByClassName("fold")[0]
+        this.gutter = this.wrapper.getElementsByClassName("gutter")[0]
         const fgCase = this.wrapper.getElementsByClassName("foreground-case")[0]
         this.container = this.wrapper.insertBefore(
             document.createElement("div"), fgCase)
@@ -448,11 +504,59 @@ class DoubleSpaced {
     reflow() {
         if (this._reflow === undefined)
             this._reflow = debounce(this.resize_debounce_ms, () => {
+                const height = parseInt(this.props.lineHeight);
+                let hi = this.reference.getBoundingClientRect().top
+                let ele = this.gutter.firstChild, el = this.reference.firstChild
+                const breaks = Array.prototype.filter.call(
+                    this.editor.value, x => x === "\n").length
+                let lim = 0
+                for (let i = 0, j = 0; i <= breaks; [i++, el = el?.nextSibling]) {
+                    let lo
+                    while (el && (el.nodeType !== 1 || el.tagName !== "BR")) {
+                        if (el.classList?.contains("below-fold")) {
+                            const bbox = el.getBoundingClientRect()
+                            hi = bbox.top - parseInt(el.style.getPropertyValue("--fold-hides"))
+                            lo = bbox.bottom
+                            break
+                        }
+                        el = el.nextSibling
+                    }
+                    lo = lo === undefined ? el ? el.getBoundingClientRect().bottom :
+                        this.reference.getBoundingClientRect().bottom : lo
+                    const size = Math.round((lo - hi) / height);
+                    hi = lo
+                    if (ele === null) {
+                        ele = document.createElement("div")
+                        this.gutter.appendChild(ele)
+                        ele.setAttribute("data-line", i)
+                    }
+                    let total = 0
+                    do {
+                        total += this.editor.meter[j].length
+                    } while (j++ < this.editor.separators.length && this.editor.separators[j - 1] !== "\n")
+                    lim = Math.max(lim, total)
+                    ele.setAttribute("data-count", total)
+                    let k = 0
+                    do {
+                        k++
+                        ele = ele && ele.nextSibling
+                    } while (ele && !ele.getAttribute("data-line"))
+                    for (; k > size; k--) this.gutter.removeChild(
+                        ele?.previousSibling ||
+                        this.gutter.lastElementChild)
+                    for (; k < size; k++) this.gutter.insertBefore(
+                        document.createElement("div"), ele)
+                    while (el && (el.nodeType !== 1 || el.tagName !== "BR")) {
+                        el = el.nextSibling
+                    }
+                }
+                this.wrapper.style.setProperty("--gutter-chars", lim.toString().length)
                 if (this.wrapper.classList.contains("split")) this.unfold()
             })
         this._reflow()
     }
 
+    fill = "\xa0"
     async parse() {
         this.editor.update(this.foreground.value).then(() => {
             const limits = this.editor.raw.map(x => x.length)
@@ -464,41 +568,20 @@ class DoubleSpaced {
                 const wordish = next.length && !next.match(this.editor.strip)
                 return wordish ? "\xA0\u200B" : "\xA0"
             }).concat([""])
-            this.background.setAttribute("data-meter", this.parser(limits)
-                .map((x, i) => {
-                    // "w" breaks this
-                    // console.assert(x.length <= limits[i])
-                    return x.padStart(limits[i]) + sep[i]
-                }).join(""))
+            this.background.setAttribute("data-meter", this.editor.meter.map((x, i) => {
+                const whitespace = limits[i] - x.length
+                const lo = Math.trunc(whitespace / (x.length + 1))
+                const wide = whitespace % (x.length + 1)
+                const res = x.split('').map((y, j) => {
+                    return y + this.fill.repeat(lo + (j < wide))
+                }).join('')
+                const word = this.fill.repeat(lo) + res
+                // "w" breaks this
+                // console.assert(x.length <= limits[i])
+                const cutoff = word.slice(0, limits[i])
+                return cutoff.padStart(limits[i]) + sep[i]
+            }).join(""))
             this.resize()
-        })
-    }
-
-    fill = "\xa0"
-    parser(limits) {
-        const options = this.editor.pronunciations.map(x => x?.map(y =>
-            y.replace(/[^012]/g, "").replace(/[12]/g, "/").replace(/0/g, "X")))
-        return options.map((x, i) => {
-            const raw = this.editor.raw[i]
-            const curly = raw.match(this.editor.manual)
-            if (curly) return curly[1].replace(/\*/g, "X")
-            if (!x) return raw ? "?" : ""
-            const pronunciation = raw.match(this.editor.version)
-            if (pronunciation) {
-                const version = parseInt(pronunciation[1])
-                return version < x.length ? x[version] : "?"
-            }
-            return x.reduce((a, b) => {
-                return b.split('').map((y, j) => y === a[j] ? y : "\\").join('')
-            })
-        }).map((x, i) => {
-            const whitespace = limits[i] - x.length
-            const lo = Math.trunc(whitespace / (x.length + 1))
-            const wide = whitespace % (x.length + 1)
-            const res = x.split('').map((y, j) => {
-                return y + this.fill.repeat(lo + (j < wide))
-            }).join('')
-            return this.fill.repeat(lo) + res
         })
     }
 
@@ -692,8 +775,8 @@ class DoubleSpaced {
             const center = clientX + bbox.width / 2
             const cur = cursor >= char && cursor <= char + raw[j].length
             const pad = center - pos
-            const which = this.annotate(j, clientX, bbox.width, pad, cur)
-            if (cur) active = [j, clientX, bbox.width, pad, which]
+            this.annotate(j, clientX, bbox.width, pad, cur)
+            if (cur) active = [j, clientX, bbox.width, pad]
             pos = center
         }
         this.container.removeChild(el)
@@ -703,7 +786,7 @@ class DoubleSpaced {
         else this.fold.style.removeProperty("--word-width")
     }
 
-    suggest(idx, left, width, pad, which) {
+    suggest(idx, left, width, pad) {
         const wrapper = this.fold.appendChild(document.createElement("div"))
         wrapper.classList.add("suggestions")
         const el = wrapper.appendChild(document.createElement("div"))
@@ -714,9 +797,10 @@ class DoubleSpaced {
             ele.innerText = x
             ele.classList.add("opt")
         })
-        if (which === undefined) {
-            f(this.editor.pronunciations[idx])
-        } else if (which !== null) { }
+        const options = this.editor.pronunciations(idx);
+        if (options?.length > 1) {
+            f(options)
+        } else if (options) { }
     }
 
     annotate(idx, left, width, pad, cur) {
@@ -730,28 +814,13 @@ class DoubleSpaced {
             this.fold.style.setProperty("--word-width", width + "px")
             this.fold.style.setProperty("--word-offset", left + "px")
         }
-        const note = this.note(idx)
-        const options = this.editor.pronunciations[idx]
-        if (note === undefined) {
+        const options = this.editor.pronunciations(idx)
+        if (options?.length > 1) {
             el.classList.add("unclear")
             el.style.setProperty("--versions", `'${options.length}'`)
-        } else if (note !== null) {
-            child.innerText = options[note]
+        } else if (options) {
+            child.innerText = options[0]
         }
-        return note
-    }
-
-    note(idx) {
-        const options = this.editor.pronunciations[idx]
-        if (options === undefined) return null
-        const pronunciation = this.editor.raw[idx].match(this.editor.version)
-        if (pronunciation) {
-            const version = parseInt(pronunciation[1])
-            if (version >= options.length) return null
-            return version
-        }
-        if (options.length === 1) return 0
-        return undefined
     }
 
     hoistBelow() {
@@ -774,6 +843,9 @@ class DoubleSpaced {
         const off = line * height + 0.5 * size;
         this.wrapper.style.setProperty("--offset", off + "px")
         this.reference.setAttribute("contenteditable", "true")
+        Array.prototype.map.call(this.wrapper.getElementsByClassName(
+            "fold-spacer"), x => { x.classList.remove("fold-spacer") })
+        this.gutter.children[line]?.classList.add("fold-spacer")
     }
 
     lineCount(el, offset) {
@@ -790,7 +862,7 @@ class DoubleSpaced {
             const prev = el.previousSibling
             sliding = prev.nodeType === 1 && prev.tagName === "BR"
         }
-        while ((el = el?.previousSibling) !== null) {
+        while (el = el?.previousSibling) {
             if (el.nodeType === 3) offset += el.textContent.length
             else if (el.nodeType === 1) {
                 if (el.tagName === "BR") offset++
@@ -843,6 +915,20 @@ const [ firstFocus, focusCallback ] = (() => {
     return [() => first(), callback]
 })()
 
+function storedBool(id, stateful, cls, init) {
+    const el = document.getElementById(id)
+    if (!(id in window.localStorage))
+        window.localStorage[id] = init
+    const f = () => {
+        window.localStorage[id] = el.checked
+        if (el.checked) stateful.classList.add(cls)
+        else stateful.classList.remove(cls)
+    }
+    el.checked = JSON.parse(window.localStorage[id])
+    f()
+    el.addEventListener("change", f)
+}
+
 window.addEventListener("load", async function() {
     const pre = document.getElementsByClassName("double-spaced")[0]
     ed = new DoubleSpaced(dict, pre)
@@ -883,13 +969,7 @@ window.addEventListener("load", async function() {
             throw e
         })
     })
-    const splittable = document.getElementById("pronunciations")
-    if (!("pronunciations" in window.localStorage))
-        window.localStorage["pronunciations"] = true
-    splittable.checked = JSON.parse(window.localStorage["pronunciations"])
-    splittable.addEventListener("change", e => {
-        window.localStorage["pronunciations"] = e.target.checked
-        if (e.target.checked) pre.classList.add("splittable")
-        else pre.classList.remove("splittable")
-    })
+    storedBool("pronunciations", pre, "splittable", true)
+    storedBool("syllable-counts", pre, "counted", false)
+
 })

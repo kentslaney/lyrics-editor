@@ -401,18 +401,17 @@ class DoubleSpaced {
         this.editor = new Editing(cursor)
         this.wrapper = wrapper
         this.foreground = this.wrapper.getElementsByClassName("foreground")[0]
-        this.fgCase = this.wrapper.getElementsByClassName("foreground-case")[0]
         this.background = this.wrapper.getElementsByClassName("background")[0]
         this.fold = this.wrapper.getElementsByClassName("fold")[0]
+        const fgCase = this.wrapper.getElementsByClassName("foreground-case")[0]
         this.container = this.wrapper.insertBefore(
-            document.createElement("div"), this.fgCase)
+            document.createElement("div"), fgCase)
         this.container.classList.add("container")
         this.reference = this.container.appendChild(
             document.createElement("div"))
         this.reference.classList.add("reference")
         this.foreground.addEventListener("input", this.update.bind(this))
         this.foreground.addEventListener("input", this.save.bind(this))
-        this.reflow = debounce(this.resize_debounce_ms, this.unfold.bind(this))
         new ResizeObserver(this.resize.bind(this)).observe(this.reference)
         this.bindFold()
         if (load) this.load()
@@ -442,7 +441,16 @@ class DoubleSpaced {
             this.background.getBoundingClientRect().height,
             this.reference.getBoundingClientRect().height)
         this.wrapper.style.setProperty("--input-height", res + "px")
-        if (this.wrapper.classList.contains("split")) this.reflow()
+        this.reflow()
+    }
+
+    _reflow
+    reflow() {
+        if (this._reflow === undefined)
+            this._reflow = debounce(this.resize_debounce_ms, () => {
+                if (this.wrapper.classList.contains("split")) this.unfold()
+            })
+        this._reflow()
     }
 
     async parse() {
@@ -481,7 +489,7 @@ class DoubleSpaced {
                 return version < x.length ? x[version] : "?"
             }
             return x.reduce((a, b) => {
-                return a.split('').map((y, j) => y === b[j] ? y : "\\").join('')
+                return b.split('').map((y, j) => y === a[j] ? y : "\\").join('')
             })
         }).map((x, i) => {
             const whitespace = limits[i] - x.length
@@ -573,8 +581,7 @@ class DoubleSpaced {
     lineRef = null
     unfold() {
         this.hoistBelow()
-        Array.prototype.map.call(this.wrapper.getElementsByClassName(
-            "long-break"), x => { x.parentElement.removeChild(x) })
+        this.clear("long-break")
         const offset = this.foreground.selectionEnd
         const substr = this.foreground.value.slice(0, offset)
         const breaks = (substr.match(/\n/g)||[]).length
@@ -652,7 +659,7 @@ class DoubleSpaced {
         this.expand(breaks, caret ? last.length : -1,
             ...(above === 0 ? [] : [headline - above, headline]))
 
-        this.reference.style.setProperty("--fold-height",
+        this.wrapper.style.setProperty("--fold-height",
             this.fold.getBoundingClientRect().height + "px")
         // window.setTimeout(() => {
         //     this.wrapper.classList.add("selecting")
@@ -766,6 +773,11 @@ class DoubleSpaced {
         const off = line * height + 0.5 * size;
         this.wrapper.style.setProperty("--offset", off + "px")
         this.reference.setAttribute("contenteditable", "true")
+    }
+
+    clear(cls) {
+        Array.prototype.map.call(this.wrapper.getElementsByClassName(
+            cls), x => { x.parentElement.removeChild(x) })
     }
 
     lineCount(el, offset) {

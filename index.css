@@ -1,3 +1,5 @@
+body { --scroll-space: 95dvh; }
+
 .double-spaced {
     --pad-left: 0.5em;
     --pad-right: 0.5em;
@@ -127,7 +129,7 @@
 
 body {
     font-size: 1rem;
-    margin-bottom: 95dvh
+    margin-bottom: var(--scroll-space);
 }
 
 .double-spaced {
@@ -283,7 +285,9 @@ body {
 @media print {
     .double-spaced {
         border-width: 0 !important;
+        padding-bottom: 0;
         --offset: 0 !important;
+        --fold-height: 0 !important;
     }
 
     .foreground {
@@ -293,16 +297,20 @@ body {
     .container {
         height: initial;
         visibility: initial;
+        position: relative !important;
     }
 
     .background, .reference {
         padding: 0;
     }
 
+    .background-case {
+        position: absolute !important;
+    }
+
     .reference {
         transform: translateY(1em);
         padding-bottom: 1em;
-        --fold-height: 0 !important;
     }
 
     .fold {
@@ -315,6 +323,7 @@ body {
 
     body {
         font-size: 1.5rem;
+        --scroll-space: 0 !important;
     }
 }
 

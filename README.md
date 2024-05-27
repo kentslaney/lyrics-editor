@@ -2,7 +2,7 @@
 Try out the demo on [GitHub Pages](https://kentslaney.github.io/lyrics-editor)!
 
 ## TODO
-- selection start in line-ref as first line looses 1 offset
-- last line as below-fold pushes reference::after down a line
-- EOF gutter overflow after removing last line
+- iOS support
+- page breaks while printing
+- change line height while hiding meter
 

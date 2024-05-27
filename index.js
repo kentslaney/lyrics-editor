@@ -410,13 +410,8 @@ class Editing {
         })
     }
 
-    pronunciations(idx) {
-        if (idx === undefined) return this._pronounce()
-        else return this._pronounce()[idx]
-    }
-
     _meter() {
-        const options = this.pronunciations().map(x => x?.map(y =>
+        const options = this.pronunciations.map(x => x?.map(y =>
             y.replace(/[^012]/g, "").replace(/[12]/g, "/").replace(/0/g, "X")))
         const raws = this.raw
         return options.map((x, i) => {
@@ -433,6 +428,7 @@ class Editing {
     get separators() { return this._separators() }
     get raw() { return this._raw() }
     get meter() { return this._meter() }
+    get pronunciations() { return this._pronounce() }
 }
 
 function debounce(ms, f) {
@@ -488,7 +484,9 @@ class DoubleSpaced {
     }
 
     update() {
-        this.reference.innerText = "\u200B" + this.foreground.value
+        const changed = this.foreground.value
+        const eof = changed.slice(-1) === "\n" ? "\u200B" : ""
+        this.reference.innerText = "\u200B" + changed + eof
     }
 
     resize(e) {
@@ -515,14 +513,16 @@ class DoubleSpaced {
                     while (el && (el.nodeType !== 1 || el.tagName !== "BR")) {
                         if (el.classList?.contains("below-fold")) {
                             const bbox = el.getBoundingClientRect()
-                            hi = bbox.top - parseInt(el.style.getPropertyValue("--fold-hides"))
+                            hi = bbox.top - parseInt(
+                                el.style.getPropertyValue("--fold-hides"))
                             lo = bbox.bottom
                             break
                         }
                         el = el.nextSibling
                     }
-                    lo = lo === undefined ? el ? el.getBoundingClientRect().bottom :
-                        this.reference.getBoundingClientRect().bottom : lo
+                    lo = lo !== undefined ? lo : el ?
+                        el.getBoundingClientRect().bottom :
+                        this.reference.getBoundingClientRect().bottom
                     const size = Math.round((lo - hi) / height);
                     hi = lo
                     if (ele === null) {
@@ -533,7 +533,8 @@ class DoubleSpaced {
                     let total = 0
                     do {
                         total += this.editor.meter[j].length
-                    } while (j++ < this.editor.separators.length && this.editor.separators[j - 1] !== "\n")
+                    } while (j++ < this.editor.separators.length &&
+                        this.editor.separators[j - 1] !== "\n")
                     lim = Math.max(lim, total)
                     ele.setAttribute("data-count", total)
                     let k = 0
@@ -550,7 +551,12 @@ class DoubleSpaced {
                         el = el.nextSibling
                     }
                 }
-                this.wrapper.style.setProperty("--gutter-chars", lim.toString().length)
+                for (let prev; prev = ele;) {
+                    ele = ele.nextSibling
+                    this.gutter.removeChild(prev)
+                }
+                this.wrapper.style.setProperty(
+                    "--gutter-chars", lim.toString().length)
                 if (this.wrapper.classList.contains("split")) this.unfold()
             })
         this._reflow()
@@ -568,7 +574,8 @@ class DoubleSpaced {
                 const wordish = next.length && !next.match(this.editor.strip)
                 return wordish ? "\xA0\u200B" : "\xA0"
             }).concat([""])
-            this.background.setAttribute("data-meter", this.editor.meter.map((x, i) => {
+            this.background.setAttribute("data-meter", this.editor.meter.map(
+                    (x, i) => {
                 const whitespace = limits[i] - x.length
                 const lo = Math.trunc(whitespace / (x.length + 1))
                 const wide = whitespace % (x.length + 1)
@@ -623,7 +630,7 @@ class DoubleSpaced {
         this.reference.addEventListener("selectstart", e => {
             selectionEndOOB = true
             this.wrapper.classList.add("selecting")
-            this.reference.style.setProperty("--fold-height",
+            this.wrapper.style.setProperty("--fold-height",
                 this.fold.getBoundingClientRect().height + "px")
         })
         window.addEventListener("mouseup", e => {
@@ -797,7 +804,7 @@ class DoubleSpaced {
             ele.innerText = x
             ele.classList.add("opt")
         })
-        const options = this.editor.pronunciations(idx);
+        const options = this.editor.pronunciations[idx];
         if (options?.length > 1) {
             f(options)
         } else if (options) { }
@@ -814,7 +821,7 @@ class DoubleSpaced {
             this.fold.style.setProperty("--word-width", width + "px")
             this.fold.style.setProperty("--word-offset", left + "px")
         }
-        const options = this.editor.pronunciations(idx)
+        const options = this.editor.pronunciations[idx]
         if (options?.length > 1) {
             el.classList.add("unclear")
             el.style.setProperty("--versions", `'${options.length}'`)
@@ -854,7 +861,7 @@ class DoubleSpaced {
         let sliding = 0
         if (el?.parentElement === this.lineRef) {
             el = this.lineRef.previousSibling
-            offset += el === null ? 0 : el.textContent.length + 1
+            offset += (el === null ? 0 : el.textContent.length) + 1
         }
         if (el === this.reference) {
             el = this.reference.childNodes[offset]
@@ -898,7 +905,7 @@ class DoubleSpaced {
         if (e?.relatedTarget === this.reference) return
         this.wrapper.classList.remove("split")
         this.foreground.scrollTop = 0
-        this.reference.style.setProperty("--fold-height", "0")
+        this.wrapper.style.setProperty("--fold-height", "0")
     }
 }
 
@@ -971,5 +978,5 @@ window.addEventListener("load", async function() {
     })
     storedBool("pronunciations", pre, "splittable", true)
     storedBool("syllable-counts", pre, "counted", false)
-
+    storedBool("meter", pre, "metered", true)
 })

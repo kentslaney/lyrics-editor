@@ -32,12 +32,16 @@ Refrigerator</textarea>
         <button id="help" onclick="this.previousElementSibling.checked ^= 1">
             <label for="collapsed" onclick="event.stopPropagation()"></label>
         </button>
-        <span id="options">
+        <div id="options">
+            <label for="meter">meter</label>
+            <input type="checkbox" id="meter">
+            <br />
             <label for="pronunciations">pronunciations</label>
             <input type="checkbox" id="pronunciations">
+            <br />
             <label for="syllable-counts">syllable&nbsp;counts</label>
             <input type="checkbox" id="syllable-counts">
-        </span>
+        </div>
         <div id="directions">
 <code>/</code> represents a stressed syllable, <!-- newline to make clearer -->
 <code>X</code> represents an unstressed syllable. <!-- while editing src -->

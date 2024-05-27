@@ -4,6 +4,10 @@ body { --scroll-space: 95dvh; }
     --pad-blank: 0.5em;
     --pad-right: var(--pad-blank);
     --pad-left: var(--pad-blank);
+/*     --line-space: 1.5; */
+/* } */
+/**/
+/* .metered.double-spaced { */
     --line-space: 2.5;
 }
 
@@ -39,12 +43,16 @@ body { --scroll-space: 95dvh; }
 }
 
 .background-case {
+    visibility: hidden;
     position: absolute;
     top: 0;
     bottom: 0;
     left: 0;
     right: 0;
     pointer-events: none;
+}
+.metered .background-case {
+    visibility: initial;
 }
 
 .double-spaced:focus-within {
@@ -64,10 +72,6 @@ body { --scroll-space: 95dvh; }
     visibility: hidden;
 }
 
-.reference::after {
-    content: '\200B'
-}
-
 #load-dict {
     display: none;
     padding: 1px 0.5em;
@@ -83,8 +87,9 @@ body { --scroll-space: 95dvh; }
 }
 
 #options {
+    text-align: right;
+    margin: 1.5em 0 0.5em 1em;
     float: right;
-    margin: 1px 1em;
 }
 
 #options input {
@@ -99,6 +104,7 @@ body { --scroll-space: 95dvh; }
 #help {
     padding: 0;
     float: right;
+    margin-left: -100%;
 }
 
 #help > label::before {
@@ -412,7 +418,11 @@ body {
     content: attr(data-count);
 }
 
-.fold-spacer {
+.gutter div[data-count="0"]::before {
+    content: '';
+}
+
+.splittable.split .fold-spacer {
     margin-top: var(--fold-height);
 }
 

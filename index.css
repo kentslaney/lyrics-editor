@@ -43,7 +43,6 @@ body { --scroll-space: 95dvh; }
 }
 
 .background-case {
-    visibility: hidden;
     position: absolute;
     top: 0;
     bottom: 0;
@@ -51,7 +50,12 @@ body { --scroll-space: 95dvh; }
     right: 0;
     pointer-events: none;
 }
-.metered .background-case {
+
+.background {
+    visibility: hidden;
+}
+
+.metered .background {
     visibility: initial;
 }
 

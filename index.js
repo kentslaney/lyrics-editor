@@ -623,7 +623,9 @@ class DoubleSpaced {
             this.parse()
             this.unfold()
         })
-        this.foreground.addEventListener("mousedown", this.join.bind(this))
+        this.foreground.addEventListener(
+            "mousedown", e => window.setTimeout(() => this.join(e), 0),
+            { passive: true })
         this.foreground.addEventListener("touchstart", this.join.bind(this), {
             passive: true })
         let selectionEndOOB = false

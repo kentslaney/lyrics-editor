@@ -532,7 +532,7 @@ class DoubleSpaced {
                     }
                     let total = 0
                     do {
-                        total += this.editor.meter[j].length
+                        total += this.editor.meter[j]?.length || 0
                     } while (j++ < this.editor.separators.length &&
                         this.editor.separators[j - 1] !== "\n")
                     lim = Math.max(lim, total)

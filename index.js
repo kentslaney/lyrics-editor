@@ -116,7 +116,7 @@ class Cursor {
                         op.onsuccess = resolve
                         op.onerror = reject
                     }))
-                    console.assert(++total === lexicon) // TODO
+                    console.assert(++total === lexicon)
                     console.info("pronunciation db downloaded")
                 };
                 return pump();
@@ -251,9 +251,10 @@ class Similarities {
     }
 
     align(seq) {
+        // TODO: stress informs matching
         return seq
             .split(/ ?([A-Z]+)[0-2] ?/g)
-            .map((x, i) => i & 1 ? x : x ? x.split(" ") : []).reverse()
+            .map((x, i) => i & 1 ? x : x ? x.split(" ") : [])
     }
 
     // ignores aspirates and semivowels
@@ -293,7 +294,7 @@ class Similarities {
 
     async rhyme(seq0, seq1) {
         const aligned0 = this.align(seq0), aligned1 = this.align(seq1);
-        const costs = await this.diff(aligned0, aligned1)
+        const costs = await this.diff(aligned0.reverse(), aligned1.reverse())
         return costs.reduce(([max, total], cur) => {
             const sum = total + cur
             return [Math.max(max, sum), sum]
@@ -317,6 +318,73 @@ function compare(query0, query1) {
 /*
 compare("battery", "battle me")
 compare("orange", "door hinge")
+*/
+
+// TODO: word boundaries
+class Suffixes {
+    constructor(sim) {
+        this.sim = sim
+        this.validate()
+        this.children = [...Array(sim.vowels.length)]
+        this.prefixes = [] // empty iff root
+        this.leaf = false
+    }
+
+    validate() {
+        const done = {}
+        return Promise.race([this.sim.load, done]).then(async (first) => {
+            console.assert(
+                first !== done,
+                "Suffix tree constructed with unloaded similarity object")
+        })
+    }
+
+    init(aligned) {
+        this.aligned = aligned
+        return this
+    }
+
+    debug(info) {
+        this.comments = info
+        return this
+    }
+
+    get(i) {
+        const vowel = this.sim.group[this.aligned[i]][1]
+        if (this.children[vowel] === undefined) {
+            this.children[vowel] = new Suffixes(this.sim)
+                .init(this.aligned).debug(this.aligned[i])
+        }
+        return this.children[vowel]
+    }
+
+    build(seq) {
+        this.aligned = this.sim.align(seq)
+        this.debug(JSON.stringify(this.aligned))
+        for (let i = 0; i < this.aligned.length - 1; i += 2) {
+            this.get(i + 1).resolve(i)
+        }
+        return this
+    }
+
+    resolve(i) {
+        this.prefixes.push(i)
+        if (i >= this.aligned.length - 3) {
+            this.leaf = true
+        } else if (this.prefixes.length > 1) {
+            for (let j of this.prefixes.length == 2 ? this.prefixes : [i]) {
+                this.get(j + 3).resolve(j + 2)
+            }
+        }
+    }
+}
+
+/*
+(async () => {
+    const bar = await dict.seq("New York City gritty committee pity the fool")
+    await phonemes.load
+    console.log(new Suffixes(phonemes).build(bar))
+})()
 */
 
 class Edit {

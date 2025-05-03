@@ -200,15 +200,23 @@ class Cursor {
             else return res.map(this.reformatRemote)
         }
     }
+
+    async first(query) {
+        return (await this.lookup(query))[0]
+    }
+
+    async seq(query) {
+        return (await Promise.all(query.split(" ").map(this.first.bind(this))))
+            .join(" ")
+    }
 }
 
 const dict = new Cursor()
 
 // https://ismir2009.ismir.net/proceedings/OS8-1.pdf
-// https://roa.rutgers.edu/files/377-0200/377-0200-YIP-0-0.PDF
 class Similarities {
     constructor() {
-        fetch("/OS8-1.json").then(res => res.json()).then((res => {
+        this.load = fetch("OS8-1.json").then(res => res.json()).then((res => {
             for (const key of Object.keys(res)) {
                 this[key] = res[key]
             }
@@ -225,11 +233,13 @@ class Similarities {
         }).bind(this))
     }
 
-    lookup(term0, term1) {
+    async lookup(term0, term1) {
+        await this.load
         const [type0, index0] = this.group[term0]
         if (term1 === undefined) {
-            const res = this[type0].slice(0, index0).map(x => x[index0]).concat(
-                this[type0][index0])
+            const res = this[type0].slice(0, index0)
+                .map((x, i) => x[index0 - i])
+                .concat(this[type0][index0])
             return Object.fromEntries(
                 this.axes[type0].map((a, b) => [a, res[b]]))
         } else {
@@ -239,7 +249,75 @@ class Similarities {
             return this[type0][lo][hi - lo]
         }
     }
+
+    align(seq) {
+        return seq
+            .split(/ ?([A-Z]+)[0-2] ?/g)
+            .map((x, i) => i & 1 ? x : x ? x.split(" ") : []).reverse()
+    }
+
+    // ignores aspirates and semivowels
+    async skips(coda) {
+        await this.load
+        let half = Math.ceil(coda.length / 2)
+        return coda.map((x, i) =>
+            this.consonants[this.group[x][1]]?.slice(-2)[+(i >= half)] || 0)
+    }
+
+    async match(coda0, coda1) {
+        if (coda0.length == 0 && coda1.length == 0) return 0
+        let skip0 = await this.skips(coda0), skip1 = await this.skips(coda1);
+        let dp = [...Array(coda0.length + 1)]
+            .map(_ => [...Array(coda1.length + 1)])
+        dp[0][0] = 0
+        for (let i = 0; i <= coda0.length; i++) {
+            for (let j = 0; j <= coda1.length; j++) {
+                if (i == 0 && j == 0) continue
+                dp[i][j] = Math.max(
+                    i == 0 ? -Infinity : dp[i - 1][j] + skip0[i - 1],
+                    j == 0 ? -Infinity : dp[i][j - 1] + skip1[j - 1],
+                    i == 0 || j == 0 ? -Infinity : dp[i - 1][j - 1] +
+                        (await this.lookup(coda0[i - 1], coda1[j - 1])))
+            }
+        }
+        const norm = Math.max(coda0.length, coda1.length)
+        return dp[coda0.length][coda1.length] / norm
+    }
+
+    diff(aligned0, aligned1) {
+        const common = Math.min(aligned0.length, aligned1.length)
+        return Promise.all([...Array(common).keys()].map(i =>
+            (i & 1 ? this.lookup : this.match).bind(this)
+                (aligned0[i], aligned1[i])))
+    }
+
+    async rhyme(seq0, seq1) {
+        const aligned0 = this.align(seq0), aligned1 = this.align(seq1);
+        const costs = await this.diff(aligned0, aligned1)
+        return costs.reduce(([max, total], cur) => {
+            const sum = total + cur
+            return [Math.max(max, sum), sum]
+        }, [0, 0])[0]
+    }
 }
+
+let phonemes = new Similarities();
+
+async function rhyme(query0, query1) {
+    const seq0 = await dict.seq(query0), seq1 = await dict.seq(query1)
+    return await phonemes.rhyme(seq0, seq1)
+}
+
+function compare(query0, query1) {
+    rhyme(query0, query1).then(x => {
+        console.log(JSON.stringify(query0), JSON.stringify(query1), x)
+    })
+}
+
+/*
+compare("battery", "battle me")
+compare("orange", "door hinge")
+*/
 
 class Edit {
     constructor(iter0, iter1, n = undefined, m = undefined) {
@@ -247,8 +325,8 @@ class Edit {
         this.iter1 = iter1
         this.n = n === undefined ? iter0.length : n
         this.m = m === undefined ? iter1.length : m
-        this.dp = [...Array(this.n + 1).keys()].map(x => {
-            return [...Array(this.m + 1).keys()].map(y => null)
+        this.dp = [...Array(this.n + 1)].map(x => {
+            return [...Array(this.m + 1)].map(y => null)
         })
     }
 

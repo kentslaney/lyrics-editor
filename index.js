@@ -1,3 +1,5 @@
+"use strict"
+
 class Cursor {
     url = "https://raw.githubusercontent.com/Alexir/CMUdict/master/cmudict-0.7b"
     local = "cmudict-0.7b"
@@ -261,6 +263,9 @@ class Similarities {
     async skips(coda) {
         await this.load
         let half = Math.ceil(coda.length / 2)
+        // TODO: word breaks?
+        // TODO: the paper mentions half as delimiting codas separate from
+        //       specifying the start/end of them
         return coda.map((x, i) =>
             this.consonants[this.group[x][1]]?.slice(-2)[+(i >= half)] || 0)
     }
@@ -320,14 +325,14 @@ compare("battery", "battle me")
 compare("orange", "door hinge")
 */
 
-// TODO: word boundaries
+// TODO: word boundaries, or probably at least line boundaries
 class Suffixes {
     constructor(sim) {
         this.sim = sim
         this.validate()
         this.children = [...Array(sim.vowels.length)]
         this.prefixes = [] // empty iff root
-        this.leaf = false
+        this.postfixes = []
     }
 
     validate() {
@@ -370,7 +375,7 @@ class Suffixes {
     resolve(i) {
         this.prefixes.push(i)
         if (i >= this.aligned.length - 3) {
-            this.leaf = true
+            this.postfixes.push(this.aligned.length - 1)
         } else if (this.prefixes.length > 1) {
             for (let j of this.prefixes.length == 2 ? this.prefixes : [i]) {
                 this.get(j + 3).resolve(j + 2)
@@ -578,7 +583,7 @@ class Editing {
 }
 
 function debounce(ms, f) {
-    request_controller = null
+    let request_controller = null
     return (...args) => {
         if (request_controller !== null) {
             request_controller.abort();

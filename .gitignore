@@ -5,4 +5,5 @@ __pycache__
 *.db
 cmudict-*
 build.html
+.DS_Store
 

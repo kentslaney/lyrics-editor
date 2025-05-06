@@ -232,6 +232,17 @@ class Similarities {
                 else this.axes[mapped] = [symbol]
                 this.group[symbol][1] = this.axes[mapped].length - 1
             }
+            for (const key of ["vowels", "consonants"]) {
+                let transposed = []
+                for (let i = 0; i < this[key][0].length; i++) {
+                    let row = []
+                    for (let j = 0; j <= i && j < this[key].length; j++) {
+                        row.push(this[key][j][i - j])
+                    }
+                    transposed.push(row)
+                }
+                this[key] = transposed
+            }
         }).bind(this))
     }
 
@@ -239,16 +250,15 @@ class Similarities {
         await this.load
         const [type0, index0] = this.group[term0]
         if (term1 === undefined) {
-            const res = this[type0].slice(0, index0)
-                .map((x, i) => x[index0 - i])
-                .concat(this[type0][index0])
+            const res = this[type0][index0].concat(
+                this[type0].slice(index0 + 1).map((x, i) => x[index0]))
             return Object.fromEntries(
                 this.axes[type0].map((a, b) => [a, res[b]]))
         } else {
             const [type1, index1] = this.group[term1]
             if (type0 === null || type0 !== type1) return null
             const [lo, hi] = [index0, index1].toSorted((a, b) => a - b)
-            return this[type0][lo][hi - lo]
+            return this[type0][hi][lo]
         }
     }
 
@@ -267,7 +277,7 @@ class Similarities {
         // TODO: the paper mentions half as delimiting codas separate from
         //       specifying the start/end of them
         return coda.map((x, i) =>
-            this.consonants[this.group[x][1]]?.slice(-2)[+(i >= half)] || 0)
+            this.consonants.slice(-2)[+(i >= half)][this.group[x][1]] || 0)
     }
 
     async match(coda0, coda1) {

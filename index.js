@@ -246,8 +246,15 @@ class Similarities {
         }).bind(this))
     }
 
-    async lookup(term0, term1) {
-        await this.load
+    validate() {
+        const done = {}
+        return Promise.race([this.load, done]).then(async (first) => {
+            console.assert(first !== done, "Similarities used before load")
+        })
+    }
+
+    lookup(term0, term1) {
+        this.validate()
         const [type0, index0] = this.group[term0]
         if (term1 === undefined) {
             const res = this[type0][index0].concat(
@@ -270,8 +277,8 @@ class Similarities {
     }
 
     // ignores aspirates and semivowels
-    async skips(coda) {
-        await this.load
+    skips(coda) {
+        this.validate()
         let half = Math.ceil(coda.length / 2)
         // TODO: word breaks?
         // TODO: the paper mentions half as delimiting codas separate from
@@ -280,9 +287,9 @@ class Similarities {
             this.consonants.slice(-2)[+(i >= half)][this.group[x][1]] || 0)
     }
 
-    async match(coda0, coda1) {
+    match(coda0, coda1) {
         if (coda0.length == 0 && coda1.length == 0) return 0
-        let skip0 = await this.skips(coda0), skip1 = await this.skips(coda1);
+        let skip0 = this.skips(coda0), skip1 = this.skips(coda1);
         let dp = [...Array(coda0.length + 1)]
             .map(_ => [...Array(coda1.length + 1)])
         dp[0][0] = 0
@@ -293,7 +300,7 @@ class Similarities {
                     i == 0 ? -Infinity : dp[i - 1][j] + skip0[i - 1],
                     j == 0 ? -Infinity : dp[i][j - 1] + skip1[j - 1],
                     i == 0 || j == 0 ? -Infinity : dp[i - 1][j - 1] +
-                        (await this.lookup(coda0[i - 1], coda1[j - 1])))
+                        (this.lookup(coda0[i - 1], coda1[j - 1])))
             }
         }
         const norm = Math.max(coda0.length, coda1.length)
@@ -302,14 +309,14 @@ class Similarities {
 
     diff(aligned0, aligned1) {
         const common = Math.min(aligned0.length, aligned1.length)
-        return Promise.all([...Array(common).keys()].map(i =>
+        return [...Array(common).keys()].map(i =>
             (i & 1 ? this.lookup : this.match).bind(this)
-                (aligned0[i], aligned1[i])))
+                (aligned0[i], aligned1[i]))
     }
 
-    async rhyme(seq0, seq1) {
+    rhyme(seq0, seq1) {
         const aligned0 = this.align(seq0), aligned1 = this.align(seq1);
-        const costs = await this.diff(aligned0.reverse(), aligned1.reverse())
+        const costs = this.diff(aligned0.reverse(), aligned1.reverse())
         return costs.reduce(([max, total], cur) => {
             const sum = total + cur
             return [Math.max(max, sum), sum]
@@ -321,6 +328,7 @@ let phonemes = new Similarities();
 
 async function rhyme(query0, query1) {
     const seq0 = await dict.seq(query0), seq1 = await dict.seq(query1)
+    await phonemes.load
     return await phonemes.rhyme(seq0, seq1)
 }
 
@@ -339,19 +347,9 @@ compare("orange", "door hinge")
 class Suffixes {
     constructor(sim) {
         this.sim = sim
-        this.validate()
         this.children = [...Array(sim.vowels.length)]
         this.prefixes = [] // empty iff root
         this.postfixes = []
-    }
-
-    validate() {
-        const done = {}
-        return Promise.race([this.sim.load, done]).then(async (first) => {
-            console.assert(
-                first !== done,
-                "Suffix tree constructed with unloaded similarity object")
-        })
     }
 
     init(aligned) {

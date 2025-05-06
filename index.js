@@ -203,17 +203,17 @@ class Cursor {
         }
     }
 
-    async first(query) {
-        return (await this.lookup(query))[0]
-    }
-
     async seq(query) {
-        return (await Promise.all(query.split(" ").map(this.first.bind(this))))
-            .join(" ")
+        return (await this.lookup(query.split(" "))).map(x => x[0])
     }
 }
 
 const dict = new Cursor()
+
+function cumsum(arr) {
+    let total = 0
+    return arr.map(x => total += x)
+}
 
 // https://ismir2009.ismir.net/proceedings/OS8-1.pdf
 class Similarities {
@@ -271,25 +271,34 @@ class Similarities {
 
     align(seq) {
         // TODO: stress informs matching
-        return seq
+        let words = seq.map(x => x
             .split(/ ?([A-Z]+)[0-2] ?/g)
-            .map((x, i) => i & 1 ? x : x ? x.split(" ") : [])
+            .map((x, i) => i & 1 ? x : x ? x.split(" ") : []))
+        let syllables = [[]]
+        for (let word of words) {
+            syllables.slice(-1)[0].push(word[0])
+            syllables = syllables.concat(
+                word.slice(1, -1).map((x, i) => i & 1 ? [x] : x))
+            syllables.push([word.slice(-1)[0]])
+        }
+        return syllables
     }
 
     // ignores aspirates and semivowels
-    skips(coda) {
+    skips(coda, rev=false) {
         this.validate()
-        let half = Math.ceil(coda.length / 2)
-        // TODO: word breaks?
+        const half = coda.length / 2
         // TODO: the paper mentions half as delimiting codas separate from
         //       specifying the start/end of them
-        return coda.map((x, i) =>
-            this.consonants.slice(-2)[+(i >= half)][this.group[x][1]] || 0)
+        return coda.map((x, i) => {
+            const side = rev ? i <= half : i >= half
+            return this.consonants.slice(-2)[+side][this.group[x][1]] || 0
+        })
     }
 
-    match(coda0, coda1) {
-        if (coda0.length == 0 && coda1.length == 0) return 0
-        let skip0 = this.skips(coda0), skip1 = this.skips(coda1);
+    paths(coda0, coda1, rev=false) {
+        if (coda0.length == 0 && coda1.length == 0) return [[0]]
+        let skip0 = this.skips(coda0, rev), skip1 = this.skips(coda1, rev);
         let dp = [...Array(coda0.length + 1)]
             .map(_ => [...Array(coda1.length + 1)])
         dp[0][0] = 0
@@ -303,23 +312,49 @@ class Similarities {
                         (this.lookup(coda0[i - 1], coda1[j - 1])))
             }
         }
-        const norm = Math.max(coda0.length, coda1.length)
-        return dp[coda0.length][coda1.length] / norm
+        return dp
     }
 
-    diff(aligned0, aligned1) {
-        const common = Math.min(aligned0.length, aligned1.length)
-        return [...Array(common).keys()].map(i =>
-            (i & 1 ? this.lookup : this.match).bind(this)
-                (aligned0[i], aligned1[i]))
+    match(dp, breaks0, breaks1) {
+        breaks0 = breaks0 === undefined ? [dp.length - 1] : breaks0
+        breaks1 = breaks1 === undefined ? [dp[0].length - 1] : breaks1
+        const breaks = breaks0.map(
+            row => breaks1.map(col => dp[row][col] / Math.max(row, col, 1)))
+        const [val, arg] = breaks.flat().reduce(([prev, argmax], cur, idx) =>
+            cur > prev ? [cur, idx] : [prev, argmax], [-Infinity, NaN])
+        const row = Math.trunc(arg / breaks1.length), col = arg % breaks1.length
+        return val
+    }
+
+    max(dp) {
+        return this.match(
+            dp, [...Array(dp.length).keys()], [...Array(dp[0].length).keys()])
+    }
+
+    spaced(codas0, codas1, rev=false) {
+        dp = this.paths(codas0.flat(), codas1.flat(), rev)
+        return this.match(
+            dp,
+            cumsum(codas0.map(x => x.length)),
+            cumsum(codas1.map(x => x.length)))
     }
 
     rhyme(seq0, seq1) {
-        const aligned0 = this.align(seq0), aligned1 = this.align(seq1);
-        const costs = this.diff(aligned0.reverse(), aligned1.reverse())
-        return costs.reduce(([max, total], cur) => {
-            const sum = total + cur
-            return [Math.max(max, sum), sum]
+        const aligned0 = this.align(seq0).reverse(),
+            aligned1 = this.align(seq1).reverse();
+        const common = Math.min(aligned0.length, aligned1.length)
+        return [...Array(common).keys()].reduce(([max, total], i) => {
+            if (i & 1) {
+                total += this.lookup(aligned0[i], aligned1[i])
+                return [Math.max(max, total), total]
+            } else {
+                const dp = this.paths(
+                    aligned0[i].flat().reverse(),
+                    aligned1[i].flat().reverse(),
+                    true)
+                return [
+                    Math.max(max, total + this.max(dp)), total + this.match(dp)]
+            }
         }, [0, 0])[0]
     }
 }
@@ -329,7 +364,7 @@ let phonemes = new Similarities();
 async function rhyme(query0, query1) {
     const seq0 = await dict.seq(query0), seq1 = await dict.seq(query1)
     await phonemes.load
-    return await phonemes.rhyme(seq0, seq1)
+    return phonemes.rhyme(seq0, seq1)
 }
 
 function compare(query0, query1) {
@@ -343,7 +378,6 @@ compare("battery", "battle me")
 compare("orange", "door hinge")
 */
 
-// TODO: word boundaries, or probably at least line boundaries
 class Suffixes {
     constructor(sim) {
         this.sim = sim

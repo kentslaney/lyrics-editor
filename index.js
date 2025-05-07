@@ -253,6 +253,11 @@ class Similarities {
         })
     }
 
+    get(type, index0, index1) {
+        const [lo, hi] = [index0, index1].toSorted()
+        return this[type0][hi][lo]
+    }
+
     lookup(term0, term1) {
         this.validate()
         const [type0, index0] = this.group[term0]
@@ -264,9 +269,17 @@ class Similarities {
         } else {
             const [type1, index1] = this.group[term1]
             if (type0 === null || type0 !== type1) return null
-            const [lo, hi] = [index0, index1].toSorted((a, b) => a - b)
-            return this[type0][hi][lo]
+            return this.get(type0, index0, index1)
         }
+    }
+
+    order(type, indices) {
+        indices = indices === undefined ?
+            [...Array(this[type].length).keys()] : indices
+        return [...Array(indices.length).keys()]
+            .map(i => [...Array(i + 1).keys()]
+                .map(j => [i, j, this[type][i][j]]))
+            .flat().toSorted(([,,a], [,,b]) => b - a)
     }
 
     align(seq) {

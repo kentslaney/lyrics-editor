@@ -437,14 +437,61 @@ class Suffixes {
             }
         }
     }
+
+    get occupied() {
+        return this.children.map((x, i) => x === undefined ? x : i)
+            .filter(x => x !== undefined)
+    }
+
+    * order() {
+        yield* this.sim.order("vowels", this.occupied)
+    }
+
+    get childless() {
+        return this.occupied.length === 0
+    }
+
+    flat() {
+        return this.childless ? this.prefixes : this.occupied.map(x =>
+            this.children[x].flat().map(x => x - 2)).flat()
+    }
+
+    repr() {
+        let pre = ""
+        if (this.prefixes.length) {
+            pre = this.childless ? "\u2500" : "\u252C"
+            pre += this.comments + " "
+            pre += this.flat().map(x => this.aligned[x].map(x =>
+                x.join("-")).join("_")).join(" ")
+            pre += this.postfixes.length ? ";" + this.postfixes.map(x =>
+                this.aligned[x][0].join("-")) : ""
+        }
+        const children = this.occupied.map(x => this.children[x].repr())
+        return pre + (children.length > 1 ? "\n" : "") + children.slice(0, -1)
+            .map(x => "\u251C" + x.replace(/\n/g, "\n\u2502")).join("\n") +
+            (children.length ? "\n\u2514" + children
+                .slice(-1)[0].replace(/\n/g, "\n ") : "")
+    }
+}
+
+async function lcs(seq) {
+    const bar = await dict.seq(seq)
+    await phonemes.load
+    return new Suffixes(phonemes).build(bar)
 }
 
 /*
-(async () => {
-    const bar = await dict.seq("New York City gritty committee pity the fool")
-    await phonemes.load
-    console.log(new Suffixes(phonemes).build(bar))
-})()
+fetch("").then(res => res.text()).then(res => {
+    res = res.match(/<textarea[^>]*>\s*(.*)<\/textarea>/s)[1]
+    res = res.replace(/\s\S+{[\/\*]+}/g, "").replace(/{[0-9]+}/g, "")
+    return res.replace(/[-_]/g, " ").replace(/[,\?]/g, "").replace(/\n/g, " ")
+}).then(lcs).then(tree => {
+    console.log(tree.repr())
+})
+
+lcs("New York City gritty committee pity the fool").then(tree => {
+    console.log(tree.repr())
+})
 */
 
 class Edit {

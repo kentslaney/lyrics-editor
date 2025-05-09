@@ -397,6 +397,7 @@ class Suffixes {
         this.children = [...Array(sim.vowels.length)]
         this.prefixes = [] // empty iff root
         this.postfixes = []
+        this.cache = null
     }
 
     init(aligned) {
@@ -427,14 +428,25 @@ class Suffixes {
         return this
     }
 
-    resolve(i) {
+    resolve(i, word=null) {
         this.prefixes.push(i)
-        if (i >= this.aligned.length - 3) {
+        const boundary = this.aligned[i].length > 1, leaf = this.childless
+        word &&= word.concat(this.aligned[i].slice(0, 1))
+        const ending = i >= this.aligned.length - 3
+        if (ending) {
             this.postfixes.push(this.aligned.length - 1)
-        } else if (this.prefixes.length > 1) {
-            for (let j of this.prefixes.length == 2 ? this.prefixes : [i]) {
-                this.get(j + 3).resolve(j + 2)
+            if (!leaf) return
+        }
+        if (!leaf || this.prefixes.length > 1 && (ending || !(
+                boundary && this.cache && JSON.stringify(word) == this.cache)) {
+            this.cache = null
+            for (let j of leaf ? ending ? this.prefixes.slice(0, -1) :
+                    this.prefixes : [i]) {
+                this.get(j + 3).resolve(j + 2, boundary ?
+                    this.aligned[i].slice(-1) : word)
             }
+        } else if (boundary) {
+            this.cache ||= JSON.stringify(word)
         }
     }
 

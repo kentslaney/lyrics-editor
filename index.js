@@ -437,8 +437,8 @@ class Suffixes {
             this.postfixes.push(this.aligned.length - 1)
             if (!leaf) return
         }
-        if (!leaf || this.prefixes.length > 1 && (ending || !(
-                boundary && this.cache && JSON.stringify(word) == this.cache)) {
+        if (!leaf || this.prefixes.length > 1 && (ending || !(boundary &&
+                this.cache && JSON.stringify(word) == this.cache))) {
             this.cache = null
             for (let j of leaf ? ending ? this.prefixes.slice(0, -1) :
                     this.prefixes : [i]) {

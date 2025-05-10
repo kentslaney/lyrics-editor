@@ -445,7 +445,7 @@ class Suffixes {
                 this.get(j + 3).resolve(j + 2, boundary ?
                     this.aligned[i].slice(-1) : word)
             }
-        } else if (boundary) {
+        } else if (boundary && word) {
             this.cache ||= JSON.stringify(word)
         }
     }

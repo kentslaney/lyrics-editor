@@ -277,7 +277,8 @@ class Similarities {
         indices0 = indices0 === undefined ?
             [...Array(this[type].length).keys()] : indices0
         indices1 = indices1 === undefined ? indices0 : indices1
-        return indices0.map(i => indices1.map(j => [i, j, this[type][i][j]]))
+        return indices0.map(i => indices1.filter(j => j <= i)
+		.map(j => [i, j, this[type][i][j]]))
             .flat().toSorted(([,,a], [,,b]) => b - a)
     }
 

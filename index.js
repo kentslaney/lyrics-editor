@@ -273,12 +273,11 @@ class Similarities {
         }
     }
 
-    order(type, indices) {
-        indices = indices === undefined ?
-            [...Array(this[type].length).keys()] : indices
-        return [...Array(indices.length).keys()]
-            .map(i => [...Array(i + 1).keys()]
-                .map(j => [i, j, this[type][i][j]]))
+    order(type, indices0, indices1) {
+        indices0 = indices0 === undefined ?
+            [...Array(this[type].length).keys()] : indices0
+        indices1 = indices1 === undefined ? indices0 : indices1
+        return indices0.map(i => indices1.map(j => [i, j, this[type][i][j]]))
             .flat().toSorted(([,,a], [,,b]) => b - a)
     }
 
@@ -345,11 +344,12 @@ class Similarities {
     }
 
     spaced(codas0, codas1, rev=false) {
-        dp = this.paths(codas0.flat(), codas1.flat(), rev)
+        dir = rev ? x => x.reverse() : x => x
+        dp = this.paths(dir(codas0.flat()), dir(codas1.flat()), rev)
         return this.match(
             dp,
-            cumsum(codas0.map(x => x.length)),
-            cumsum(codas1.map(x => x.length)))
+            cumsum(dir(codas0.map(x => x.length))),
+            cumsum(dir(codas1.map(x => x.length))))
     }
 
     rhyme(seq0, seq1) {
@@ -390,6 +390,40 @@ function compare(query0, query1) {
 compare("battery", "battle me")
 compare("orange", "door hinge")
 */
+
+class MaxHeap {
+    constructor() {
+        this.arr = []
+    }
+
+    push(x) {
+        this.arr.push(x)
+        let i = this.arr.length - 1, p
+        while (i > 0 && this.arr[p = Math.trunc((i - 1) / 2)] < this.arr[i]) {
+            [this.arr[i], this.arr[p]] = [this.arr[p], this.arr[i]]
+            i = p
+        }
+    }
+
+    pop() {
+        if (this.arr.length <= 1) return this.arr.pop()
+        const res = this.arr[0]
+        this.arr[0] = this.arr.pop()
+        for (let i = 0, max = 0;; i = max) {
+            const l = 2 * i + 1, r = 2 * i + 2
+            if (l < this.arr.length && this.arr[l] > this.arr[max]) max = l
+            if (r < this.arr.length && this.arr[r] > this.arr[max]) max = r
+            if (max === i) return res
+            else [this.arr[i], this.arr[max]] = [this.arr[max], this.arr[i]]
+        }
+    }
+
+    [Symbol.iterator]() {
+        return {
+            next: () => ({ done: this.arr.length === 0, value: this.pop() })
+        }
+    }
+}
 
 class Suffixes {
     constructor(sim) {
@@ -453,10 +487,6 @@ class Suffixes {
     get occupied() {
         return this.children.map((x, i) => x === undefined ? x : i)
             .filter(x => x !== undefined)
-    }
-
-    * order() {
-        yield* this.sim.order("vowels", this.occupied)
     }
 
     get childless() {

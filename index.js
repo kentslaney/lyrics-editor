@@ -273,12 +273,12 @@ class Similarities {
         }
     }
 
-    order(type, indices0, indices1) {
+    order(type, indices0, indices1, lu=true) {
         indices0 = indices0 === undefined ?
             [...Array(this[type].length).keys()] : indices0
         indices1 = indices1 === undefined ? indices0 : indices1
-        return indices0.map(i => indices1.filter(j => j <= i)
-		.map(j => [i, j, this[type][i][j]]))
+        return indices0.map(i => (lu ? indices1.filter(j => j <= i) : indices1)
+                .map(j => [i, j, this[type][Math.max(i, j)][Math.min(i, j)]]))
             .flat().toSorted(([,,a], [,,b]) => b - a)
     }
 
@@ -430,7 +430,7 @@ class Suffixes {
     constructor(sim) {
         this.sim = sim
         this.children = [...Array(sim.vowels.length)]
-        this.prefixes = [] // empty iff root
+        this.prefixes = []
         this.postfixes = []
         this.cache = null
     }
@@ -492,6 +492,10 @@ class Suffixes {
 
     get childless() {
         return this.occupied.length === 0
+    }
+
+    get parentless() {
+        return this.prefixes.length === 0
     }
 
     flat() {

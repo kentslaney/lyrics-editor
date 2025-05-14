@@ -255,7 +255,7 @@ class Similarities {
 
     get(type, index0, index1) {
         const [lo, hi] = [index0, index1].toSorted()
-        return this[type0][hi][lo]
+        return this[type][hi][lo]
     }
 
     lookup(term0, term1) {
@@ -345,12 +345,12 @@ class Similarities {
     }
 
     spaced(codas0, codas1, rev=false) {
-        dir = rev ? x => x.reverse() : x => x
-        dp = this.paths(dir(codas0.flat()), dir(codas1.flat()), rev)
-        return this.match(
+        const dir = rev ? x => x.reverse() : x => x
+        const dp = this.paths(dir(codas0.flat()), dir(codas1.flat()), rev)
+        return [this.match(dp), this.match(
             dp,
             cumsum(dir(codas0.map(x => x.length))),
-            cumsum(dir(codas1.map(x => x.length))))
+            cumsum(dir(codas1.map(x => x.length))))]
     }
 
     rhyme(seq0, seq1) {

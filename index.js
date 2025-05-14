@@ -254,7 +254,7 @@ class Similarities {
     }
 
     get(type, index0, index1) {
-        const [lo, hi] = [index0, index1].toSorted()
+        const [lo, hi] = [index0, index1].toSorted((a, b) => a - b)
         return this[type][hi][lo]
     }
 

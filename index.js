@@ -431,12 +431,15 @@ class Suffixes {
         this.sim = sim
         this.children = [...Array(sim.vowels.length)]
         this.prefixes = []
+        this.refs = []
         this.postfixes = []
         this.cache = null
+        this.parentless = true
     }
 
     init(aligned) {
         this.aligned = aligned
+        this.parentless = false
         return this
     }
 
@@ -458,13 +461,15 @@ class Suffixes {
         this.aligned = this.sim.align(seq)
         this.debug(JSON.stringify(this.aligned))
         for (let i = 0; i < this.aligned.length - 1; i += 2) {
-            this.get(i + 1).resolve(i)
+            this.prefixes.push(i)
+            this.get(i + 1).resolve(i, Math.trunc(i / 2))
         }
         return this
     }
 
-    resolve(i, word=null) {
+    resolve(i, ref=null, word=null) {
         this.prefixes.push(i)
+        this.refs.push(ref)
         const boundary = this.aligned[i].length > 1, leaf = this.childless
         word &&= word.concat(this.aligned[i].slice(0, 1))
         const ending = i >= this.aligned.length - 3
@@ -475,9 +480,11 @@ class Suffixes {
         if (!leaf || this.prefixes.length > 1 && (ending || !(boundary &&
                 this.cache && JSON.stringify(word) == this.cache))) {
             this.cache = null
-            for (let j of leaf ? ending ? this.prefixes.slice(0, -1) :
-                    this.prefixes : [i]) {
-                this.get(j + 3).resolve(j + 2, boundary ?
+            const it = (leaf ?
+                (ending ? this.prefixes.slice(0, -1) : this.prefixes).map(
+                    (x, j) => [j, x]) : [[this.prefixes.length - 1, i]])
+            for (let [j, k] of it) {
+                this.get(k + 3).resolve(k + 2, j, boundary ?
                     this.aligned[i].slice(-1) : word)
             }
         } else if (boundary && word) {
@@ -494,10 +501,6 @@ class Suffixes {
         return this.occupied.length === 0
     }
 
-    get parentless() {
-        return this.prefixes.length === 0
-    }
-
     flat() {
         return this.childless ? this.prefixes : this.occupied.map(x =>
             this.children[x].flat().map(x => x - 2)).flat()
@@ -505,7 +508,7 @@ class Suffixes {
 
     repr() {
         let pre = ""
-        if (this.prefixes.length) {
+        if (!this.parentless) {
             pre = this.childless ? "\u2500" : "\u252C"
             pre += this.comments + " "
             pre += this.flat().map(x => this.aligned[x].map(x =>

@@ -439,7 +439,7 @@ class Suffixes {
     }
 
     init(parent) {
-        this.aligned = parent.root.aligned
+        this.aligned = parent.aligned
         this.root = parent.root
         this.depth = parent.depth + 1
         return this
@@ -511,8 +511,8 @@ class Suffixes {
 
     flat() {
         return this.childless ? this.prefixes : this.occupied
-            .map(x => this.children[x].flat().map(x => x - 2)).flat()
-            .concat(this.postfix === null ? [] : [this.postfix - 2])
+            .map(x => this.children[x].flat()).flat()
+            .concat(this.postfix === null ? [] : [this.postfix]).map(x => x - 2)
     }
 
     repr() {

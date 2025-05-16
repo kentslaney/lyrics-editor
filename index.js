@@ -432,7 +432,7 @@ class Suffixes {
         this.children = [...Array(sim.vowels.length)]
         this.prefixes = []
         this.refs = []
-        this.postfixes = []
+        this.postfix = null
         this.cache = null
         this.root = this
         this.depth = 0
@@ -483,7 +483,7 @@ class Suffixes {
         word &&= word.concat(this.aligned[i].slice(0, 1))
         const ending = i >= this.aligned.length - 3
         if (ending) {
-            this.postfixes.push(this.aligned.length - 1)
+            this.postfix = this.aligned.length - 1
             if (!leaf) return
         }
         if (!leaf || this.refs.length > 1 && (ending || !(boundary &&
@@ -510,8 +510,9 @@ class Suffixes {
     }
 
     flat() {
-        return this.childless ? this.prefixes : this.occupied.map(x =>
-            this.children[x].flat().map(x => x - 2)).flat()
+        return this.childless ? this.prefixes : this.occupied
+            .map(x => this.children[x].flat().map(x => x - 2)).flat()
+            .concat(this.postfix === null ? [] : [this.postfix - 2])
     }
 
     repr() {
@@ -520,9 +521,8 @@ class Suffixes {
             pre = this.childless ? "\u2500" : "\u252C"
             pre += this.comments + " "
             pre += this.flat().map(x => this.aligned[x].map(x =>
-                x.join("-")).join("_")).join(" ")
-            pre += this.postfixes.length ? ";" + this.postfixes.map(x =>
-                this.aligned[x][0].join("-")) : ""
+                x.join("-")).join("_") + (x === this.aligned.length - 3 ? ";" +
+                this.aligned.slice(-1)[0][0].join("-") : "")).join(" ")
         }
         const children = this.occupied.map(x => this.children[x].repr())
         return pre + (children.length > 1 ? "\n" : "") + children.slice(0, -1)
@@ -546,11 +546,11 @@ fetch("").then(res => res.text()).then(res => {
 }).then(lcs).then(tree => {
     console.log(tree.repr())
 })
+*/
 
 lcs("New York City gritty committee pity the fool").then(tree => {
     console.log(tree.repr())
 })
-*/
 
 class Edit {
     constructor(iter0, iter1, n = undefined, m = undefined) {

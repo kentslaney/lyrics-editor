@@ -75,7 +75,7 @@ class Cursor {
                     const textChunk = new TextDecoder().decode(value);
                     const text = prefix + textChunk
                     let line = undefined;
-                    for (let next of text.split("\n")) {
+                    for (const next of text.split("\n")) {
                         if (line === undefined || line.startsWith(";;;")) {
                             line = next;
                             continue;
@@ -288,7 +288,7 @@ class Similarities {
             .split(/ ?([A-Z]+)[0-2] ?/g)
             .map((x, i) => i & 1 ? x : x ? x.split(" ") : []))
         let syllables = [[]]
-        for (let word of words) {
+        for (const word of words) {
             syllables.slice(-1)[0].push(word[0])
             syllables = syllables.concat(
                 word.slice(1, -1).map((x, i) => i & 1 ? [x] : x))
@@ -434,13 +434,19 @@ class Suffixes {
         this.refs = []
         this.postfixes = []
         this.cache = null
-        this.parentless = true
+        this.root = this
+        this.depth = 0
     }
 
-    init(aligned) {
-        this.aligned = aligned
-        this.parentless = false
+    init(parent) {
+        this.aligned = parent.root.aligned
+        this.root = parent.root
+        this.depth = parent.depth + 1
         return this
+    }
+
+    get parentless() {
+        return this.root === this
     }
 
     debug(info) {
@@ -448,11 +454,15 @@ class Suffixes {
         return this
     }
 
+    step(i) {
+        return this.sim.group[this.aligned[i]][1]
+    }
+
     get(i) {
-        const vowel = this.sim.group[this.aligned[i]][1]
+        const vowel = this.step(i)
         if (this.children[vowel] === undefined) {
             this.children[vowel] = new Suffixes(this.sim)
-                .init(this.aligned).debug(this.aligned[i])
+                .init(this).debug(this.aligned[i])
         }
         return this.children[vowel]
     }
@@ -460,10 +470,9 @@ class Suffixes {
     build(seq) {
         this.aligned = this.sim.align(seq)
         this.debug(JSON.stringify(this.aligned))
-        for (let i = 0; i < this.aligned.length - 1; i += 2) {
-            this.prefixes.push(i)
-            this.get(i + 1).resolve(i, Math.trunc(i / 2))
-        }
+        this.prefixes = [...Array(Math.trunc(this.aligned.length / 2))]
+            .map((_, i) => i * 2)
+        this.prefixes.forEach((i, j) => this.get(i + 1).resolve(i, j))
         return this
     }
 
@@ -477,13 +486,12 @@ class Suffixes {
             this.postfixes.push(this.aligned.length - 1)
             if (!leaf) return
         }
-        if (!leaf || this.prefixes.length > 1 && (ending || !(boundary &&
+        if (!leaf || this.refs.length > 1 && (ending || !(boundary &&
                 this.cache && JSON.stringify(word) == this.cache))) {
             this.cache = null
-            const it = (leaf ?
-                (ending ? this.prefixes.slice(0, -1) : this.prefixes).map(
-                    (x, j) => [j, x]) : [[this.prefixes.length - 1, i]])
-            for (let [j, k] of it) {
+            const it = leaf ? this.prefixes.slice(0, ending ? -1 : undefined)
+                .map((x, j) => [j, x]) : [[this.refs.length - 1, i]]
+            for (const [j, k] of it) {
                 this.get(k + 3).resolve(k + 2, j, boundary ?
                     this.aligned[i].slice(-1) : word)
             }
@@ -667,7 +675,7 @@ class Editing {
         edit.removed((x, rewrite, i) => {
             if (!rewrite) removing.splice(0, 0, i)
         })
-        for (let i of removing) {
+        for (const i of removing) {
             this._pronunciations.splice(i, 1)
         }
         res.forEach((i, j) => {

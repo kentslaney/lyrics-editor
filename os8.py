@@ -39,10 +39,10 @@ def diag(A): # https://math.stackexchange.com/a/1393907/1370602
 
 def log_diag(inv_temp=1):
     def closure(A):
-        return diag(np.exp(A))
+        return diag(np.exp(inv_temp * A))
     return closure
 
-def metropolis_hastings(A, it=1_000_000, f=log_diag(), seed=0): # 6.437
+def metropolis_hastings(A, it=1_000_000, f=log_diag(), seed=0):
     if seed is not None:
         np.random.seed(seed)
     d = A.shape[0]
@@ -50,25 +50,24 @@ def metropolis_hastings(A, it=1_000_000, f=log_diag(), seed=0): # 6.437
     best = score = f(A)
     for i in range(it):
         first, second = np.random.choice(d, 2, False)
-        proposal = order[:]
+        proposal = np.copy(order)
         proposal[first], proposal[second] = proposal[second], proposal[first]
         shuffled = A[proposal, :][:, proposal]
         updated = f(shuffled)
-        assert updated > 0
-        accept = np.minimum(1, updated / score)
+        if updated > best:
+            out, best = proposal, updated
+        accept = 1 if updated > score else updated / score / d
         if np.random.uniform() <= accept:
             order, score = proposal, updated
-            if score > best:
-                out, best = order, score
-    return out, best
+    return out
 
-# consonants_order, _ = metropolis_hastings(consonants_sq, seed=1)
-# vowels_order, _ = metropolis_hastings(vowels)
-consonants_order = np.array([ # 0.9029487250951472
-        10, 11,  8,  5,  2,  1, 19,  7,  4,  9, 17, 15, 14, 13,  0, 16, 18, 20,
-        12,  3,  6])
-vowels_order = np.array([ # 0.9556387333620513
-        13,  9,  5,  4,  2,  6, 11,  1,  7, 12,  0, 10,  3, 14,  8])
+# consonants_order = metropolis_hastings(consonants_sq)
+# vowels_order = metropolis_hastings(vowels)
+consonants_order = np.array([
+        11, 17,  4,  1, 12,  7, 16, 10,  9, 13, 14,  3,  2, 18,  0,  5, 15,
+        8, 19,  6, 20])
+vowels_order = np.array([
+        12, 10,  8,  9,  6,  1,  2, 13,  3,  0,  7,  5, 11, 14,  4])
 consonants = consonants[consonants_order, :][:, consonants_order]
 consonants_sq = consonants_sq[consonants_order, :][:, consonants_order]
 vowels = vowels[vowels_order, :][:, vowels_order]
@@ -79,6 +78,9 @@ sym_order = lambda x, y: [x[i] for i in y]
 vowels_sym = sym_order(vowels_sym, vowels_order)
 consonants_sym = sym_order(consonants_sym, consonants_order)
 
-print(consonants_sym)
+print(
+        log_diag()(consonants_sq), repr(consonants_order), consonants_sym,
+        sep="\n", end="\n\n")
+print(log_diag()(vowels), repr(vowels_order), vowels_sym, sep="\n")
 plt.imshow(consonants_sq)
 plt.show()

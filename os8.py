@@ -63,10 +63,10 @@ def metropolis_hastings(A, it=1_000_000, f=log_diag, seed=0): # 6.437
 # consonants_order, _ = metropolis_hastings(consonants_sq, seed=1)
 # vowels_order, _ = metropolis_hastings(vowels)
 consonants_order = np.array([ # 0.9029487250951472
-       10, 11,  8,  5,  2,  1, 19,  7,  4,  9, 17, 15, 14, 13,  0, 16, 18, 20,
-       12,  3,  6])
+        10, 11,  8,  5,  2,  1, 19,  7,  4,  9, 17, 15, 14, 13,  0, 16, 18, 20,
+        12,  3,  6])
 vowels_order = np.array([ # 0.9556387333620513
-    13,  9,  5,  4,  2,  6, 11,  1,  7, 12,  0, 10,  3, 14,  8])
+        13,  9,  5,  4,  2,  6, 11,  1,  7, 12,  0, 10,  3, 14,  8])
 consonants = consonants[consonants_order, :][:, consonants_order]
 consonants_sq = consonants_sq[consonants_order, :][:, consonants_order]
 vowels = vowels[vowels_order, :][:, vowels_order]

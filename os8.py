@@ -37,10 +37,12 @@ def diag(A): # https://math.stackexchange.com/a/1393907/1370602
     return (n * Sxy - Sx * Sy) / (
             ((n * Sx2 - Sx ** 2) ** 0.5) * ((n * Sy2 - Sy ** 2) ** 0.5))
 
-def log_diag(A):
-    return diag(np.exp(A))
+def log_diag(inv_temp=1):
+    def closure(A):
+        return diag(np.exp(A))
+    return closure
 
-def metropolis_hastings(A, it=1_000_000, f=log_diag, seed=0): # 6.437
+def metropolis_hastings(A, it=1_000_000, f=log_diag(), seed=0): # 6.437
     if seed is not None:
         np.random.seed(seed)
     d = A.shape[0]

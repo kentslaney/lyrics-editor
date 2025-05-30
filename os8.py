@@ -2,6 +2,7 @@ import json, pathlib
 import numpy as np
 import matplotlib.pyplot as plt
 
+# https://github.com/cmusphinx/cmudict/blob/master/cmudict.phones
 with open(pathlib.Path(__file__).parents[0] / "OS8-1.json") as fp:
     dat = json.load(fp)
 

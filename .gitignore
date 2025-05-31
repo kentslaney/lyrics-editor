@@ -6,4 +6,6 @@ __pycache__
 cmudict-*
 build.html
 .DS_Store
+altdict.txt
+stats.txt
 

@@ -83,9 +83,18 @@ sym_order = lambda x, y: [x[i] for i in y]
 vowels_sym = sym_order(vowels_sym, vowels_order)
 consonants_sym = sym_order(consonants_sym, consonants_order)
 
-print(
-        log_diag()(consonants_sq), repr(consonants_order), consonants_sym,
-        sep="\n", end="\n\n")
-print(log_diag()(vowels), repr(vowels_order), vowels_sym, sep="\n")
-plt.imshow(consonants_sq)
-plt.show()
+# print(
+#         log_diag()(consonants_sq), repr(consonants_order), consonants_sym,
+#         sep="\n", end="\n\n")
+# print(log_diag()(vowels), repr(vowels_order), vowels_sym, sep="\n")
+# plt.imshow(consonants_sq)
+# plt.show()
+
+totals = list(map(sum, zip(*dat["counts"].values())))
+remaining = [i for _, i in dat["symbols"] if i != "removed"]
+count_filter = lambda x: np.array([
+        i for i, j in zip(totals, remaining) if dat["mapping"][j] == x])
+consonants_count = count_filter("consonants")
+vowels_count = count_filter("vowels")
+consonants_freq = consonants_count / np.sum(consonants_count)
+vowels_freq = vowels_count / np.sum(vowels_count)

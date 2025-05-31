@@ -73,9 +73,9 @@ for first, second in manual:
             consonants_order[second], consonants_order[first]
 vowels_order = np.array([
         12, 10,  8,  9,  6,  1,  2, 13,  3,  0,  7,  5, 11, 14,  4])
-consonants = consonants[consonants_order, :][:, consonants_order]
-consonants_sq = consonants_sq[consonants_order, :][:, consonants_order]
-vowels = vowels[vowels_order, :][:, vowels_order]
+consonants_block = consonants[consonants_order, :][:, consonants_order]
+consonants_block_sq = consonants_sq[consonants_order, :][:, consonants_order]
+vowels_block = vowels[vowels_order, :][:, vowels_order]
 
 sym_filter = lambda x: [i for i, j in dat["symbols"] if dat["mapping"][j] == x]
 vowels_sym, consonants_sym = sym_filter("vowels"), sym_filter("consonants")
@@ -84,10 +84,10 @@ vowels_sym = sym_order(vowels_sym, vowels_order)
 consonants_sym = sym_order(consonants_sym, consonants_order)
 
 # print(
-#         log_diag()(consonants_sq), repr(consonants_order), consonants_sym,
-#         sep="\n", end="\n\n")
-# print(log_diag()(vowels), repr(vowels_order), vowels_sym, sep="\n")
-# plt.imshow(consonants_sq)
+#         log_diag()(consonants_block_sq), repr(consonants_order),
+#         consonants_sym, sep="\n", end="\n\n")
+# print(log_diag()(vowels_block), repr(vowels_order), vowels_sym, sep="\n")
+# plt.imshow(consonants_block_sq)
 # plt.show()
 
 totals = list(map(sum, zip(*dat["counts"].values())))
@@ -98,3 +98,6 @@ consonants_count = count_filter("consonants")
 vowels_count = count_filter("vowels")
 consonants_freq = consonants_count / np.sum(consonants_count)
 vowels_freq = vowels_count / np.sum(vowels_count)
+kl = lambda freq, sq: np.outer(freq, freq) * np.exp(sq) * sq
+vowels_kl = kl(vowels_freq, vowels)
+consonants_kl = kl(consonants_freq, consonants_sq)

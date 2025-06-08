@@ -101,3 +101,6 @@ vowels_freq = vowels_count / np.sum(vowels_count)
 kl = lambda freq, sq: np.outer(freq, freq) * np.exp(sq) * sq
 vowels_kl = kl(vowels_freq, vowels)
 consonants_kl = kl(consonants_freq, consonants_sq)
+
+consonants_val, consonants_vec = np.linalg.eigh(consonants_sq)
+vowels_val, vowels_vec = np.linalg.eigh(vowels)

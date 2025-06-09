@@ -426,6 +426,20 @@ class MaxHeap {
     }
 }
 
+class Ngram extends MaxHeap {
+    constructor(sim) {
+        super()
+        this.sim = sim
+        this.bag = []
+    }
+
+    _push(consonants) { // ordered indices
+        return consonants.map(x => this.sim.eigenvectors.consonants[x])
+            .reduce((x, y) => x.map((z, i) => z + y[i]))
+        //super.push(/*TODO*/)
+    }
+}
+
 class Suffixes {
     constructor(sim) {
         this.sim = sim
@@ -530,6 +544,11 @@ class Suffixes {
             (children.length ? "\n\u2514" + children
                 .slice(-1)[0].replace(/\n/g, "\n ") : "")
     }
+
+    consonants() {
+        return this.prefixes.map(x =>
+            this.aligned[x].flat().map(x => this.sim.group[x][1]))
+    }
 }
 
 async function lcs(seq) {
@@ -550,6 +569,7 @@ fetch("").then(res => res.text()).then(res => {
 
 lcs("New York City gritty committee pity the fool").then(tree => {
     console.log(tree.repr())
+    console.log(tree.children[9].consonants())
 })
 
 class Edit {

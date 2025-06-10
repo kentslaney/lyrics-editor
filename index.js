@@ -397,11 +397,15 @@ class MaxHeap {
         this.arr = []
     }
 
+    swap(i, j) {
+        [this.arr[i], this.arr[j]] = [this.arr[j], this.arr[i]]
+    }
+
     push(x) {
         this.arr.push(x)
         let i = this.arr.length - 1, p
         while (i > 0 && this.arr[p = Math.trunc((i - 1) / 2)] < this.arr[i]) {
-            [this.arr[i], this.arr[p]] = [this.arr[p], this.arr[i]]
+            this.swap(i, p)
             i = p
         }
     }
@@ -415,7 +419,7 @@ class MaxHeap {
             if (l < this.arr.length && this.arr[l] > this.arr[max]) max = l
             if (r < this.arr.length && this.arr[r] > this.arr[max]) max = r
             if (max === i) return res
-            else [this.arr[i], this.arr[max]] = [this.arr[max], this.arr[i]]
+            else this.swap(i, max)
         }
     }
 
@@ -426,7 +430,31 @@ class MaxHeap {
     }
 }
 
-class Ngram extends MaxHeap {
+class MaxHeapKV extends MaxHeap {
+    constructor() {
+        super()
+        this.val = []
+    }
+
+    swap(i, j) {
+        [this.val[i], this.val[j]] = [this.val[j], this.val[i]]
+        super.swap(i, j)
+    }
+
+    push(k, v) {
+        this.val.push(v)
+        super.push(k)
+    }
+
+    pop() {
+        if (this.arr.length <= 1) return [this.arr.pop(), this.val.pop()]
+        const res = this.val[0]
+        this.val[0] = this.val.pop()
+        return [super.pop(), res]
+    }
+}
+
+class Ngram extends MaxHeapKV {
     constructor(sim) {
         super()
         this.sim = sim
@@ -441,7 +469,7 @@ class Ngram extends MaxHeap {
             const dist = consonants.map((x, j) =>
                 x * this.bag[i][j] * this.sim.eigenvalues.consonants[j])
                     .reduce((a, b) => a + b)
-            super.push(dist)
+            super.push(dist, [i, idx])
         }
         this.bag.push(consonants)
         return idx

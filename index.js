@@ -458,20 +458,20 @@ class Ngram extends MaxHeapKV {
     constructor(sim) {
         super()
         this.sim = sim
-        this.bag = []
+        this.bags = []
     }
 
     _push(consonants) { // ordered indices
-        const idx = this.bag.length
+        const idx = this.bags.length
         consonants = consonants.map(x => this.sim.eigenvectors.consonants[x])
             .reduce((x, y) => x.map((z, i) => z + y[i]))
-        for (let i = 0; i < this.bag.length; i++) {
+        for (let i = 0; i < this.bags.length; i++) {
             const dist = consonants.map((x, j) =>
-                x * this.bag[i][j] * this.sim.eigenvalues.consonants[j])
+                x * this.bags[i][j] * this.sim.eigenvalues.consonants[j])
                     .reduce((a, b) => a + b)
             super.push(dist, [i, idx])
         }
-        this.bag.push(consonants)
+        this.bags.push(consonants)
         return idx
     }
 

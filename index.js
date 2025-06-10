@@ -454,7 +454,39 @@ class MaxHeapKV extends MaxHeap {
     }
 }
 
-class Ngram extends MaxHeapKV {
+class MaxHeapPeek extends MaxHeapKV {
+    constructor() {
+        super()
+        this.prev = null
+        this.held = false
+    }
+
+    push(...args) {
+        if (this.held) {
+            super.push(...this.prev)
+            this.held = false
+        }
+        super.push(...args)
+        this.prev = null
+    }
+
+    pop() {
+        if (this.held) {
+            this.held = false
+            return this.prev
+        }
+        this.prev = super.pop()
+        return this.prev
+    }
+
+    hold() {
+        console.assert(this.prev !== null)
+        this.held = true
+        return this
+    }
+}
+
+class Ngram extends MaxHeapPeek {
     constructor(sim) {
         super()
         this.sim = sim

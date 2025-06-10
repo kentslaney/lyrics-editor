@@ -434,9 +434,21 @@ class Ngram extends MaxHeap {
     }
 
     _push(consonants) { // ordered indices
-        return consonants.map(x => this.sim.eigenvectors.consonants[x])
+        const idx = this.bag.length
+        consonants = consonants.map(x => this.sim.eigenvectors.consonants[x])
             .reduce((x, y) => x.map((z, i) => z + y[i]))
-        //super.push(/*TODO*/)
+        for (let i = 0; i < this.bag.length; i++) {
+            const dist = consonants.map((x, j) =>
+                x * this.bag[i][j] * this.sim.eigenvalues.consonants[j])
+                    .reduce((a, b) => a + b)
+            super.push(dist)
+        }
+        this.bag.push(consonants)
+        return idx
+    }
+
+    push(...consonants) {
+        return consonants.map(x => this._push(x))
     }
 }
 
@@ -569,7 +581,10 @@ fetch("").then(res => res.text()).then(res => {
 
 lcs("New York City gritty committee pity the fool").then(tree => {
     console.log(tree.repr())
-    console.log(tree.children[9].consonants())
+    let bag = new Ngram(phonemes)
+    bag.push(...tree.children[9].consonants())
+    console.log(bag.pop())
+    console.log(bag)
 })
 
 class Edit {

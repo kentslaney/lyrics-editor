@@ -434,8 +434,14 @@ class Ngram extends MaxHeap {
     }
 
     _push(consonants) { // ordered indices
-        return consonants.map(x => this.sim.eigenvectors.consonants[x])
+        const idx = this.bag.length
+        consonants = consonants.map(x => this.sim.eigenvectors.consonants[x])
             .reduce((x, y) => x.map((z, i) => z + y[i]))
+        for (let i = 0; i < this.bag.length; i++) {
+            const dist = consonants.map((x, j) => x * this.bag[i][j])
+                .reduce((a, b) => a + b)
+        }
+        this.bag.push(consonants)
         //super.push(/*TODO*/)
     }
 }

@@ -645,7 +645,6 @@ fetch("").then(res => res.text()).then(res => {
 }).then(lcs).then(tree => {
     console.log(tree.repr())
 })
-*/
 
 lcs("New York City gritty committee pity the fool").then(tree => {
     console.log(tree.repr())
@@ -654,6 +653,7 @@ lcs("New York City gritty committee pity the fool").then(tree => {
     console.log(bag.pop())
     console.log(bag)
 })
+*/
 
 class Edit {
     constructor(iter0, iter1, n = undefined, m = undefined) {
@@ -1072,7 +1072,7 @@ class DoubleSpaced {
                 this.#selectionEnd = next
             }
         }).bind(this)
-        el.addEventListener('blur', () => { prev = -1 });
+        el.addEventListener('blur', () => { this.#selectionEnd = -1 });
         el.addEventListener('keydown', check);
         el.addEventListener('keypress', check);
         el.addEventListener('keyup', check);

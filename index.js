@@ -484,6 +484,11 @@ class MaxHeapPeek extends MaxHeapKV {
         this.held = true
         return this
     }
+
+    peek() {
+        if (this.held) return this.prev
+        else return [this.arr[0], this.val[0]]
+    }
 }
 
 class Ngram extends MaxHeapPeek {
@@ -495,8 +500,10 @@ class Ngram extends MaxHeapPeek {
 
     _push(consonants) { // ordered indices
         const idx = this.bags.length
-        consonants = consonants.map(x => this.sim.eigenvectors.consonants[x])
-            .reduce((x, y) => x.map((z, i) => z + y[i]))
+        consonants = consonants.length ?
+            consonants.map(x => this.sim.eigenvectors.consonants[x])
+                .reduce((x, y) => x.map((z, i) => z + y[i]))
+            : [...Array(this.sim.eigenvectors.consonants.length)].map(x => 0)
         for (let i = 0; i < this.bags.length; i++) {
             const dist = consonants.map((x, j) =>
                 x * this.bags[i][j] * this.sim.eigenvalues.consonants[j])
@@ -619,7 +626,8 @@ class Suffixes {
 
     consonants() {
         return this.prefixes.map(x =>
-            this.aligned[x].flat().map(x => this.sim.group[x][1]))
+            this.aligned[x].flat().map(x => this.sim.group[x][1])
+                .filter(x => x !== null))
     }
 }
 

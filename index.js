@@ -1058,18 +1058,18 @@ class DoubleSpaced {
         })
     }
 
+    #selectionEnd = -1
     caretMove(el, f) {
         // https://stackoverflow.com/a/53999418
-        let prev = -1;
         const check = (e => {
             check12(e)
             window.setTimeout(() => check12(e), 0)
         })
         const check12 = (e => {
             const next = el.selectionEnd;
-            if (next !== prev) {
-                f(e, next, prev)
-                prev = next
+            if (next !== this.#selectionEnd) {
+                f(e, next, this.#selectionEnd)
+                this.#selectionEnd = next
             }
         }).bind(this)
         el.addEventListener('blur', () => { prev = -1 });
@@ -1319,6 +1319,7 @@ class DoubleSpaced {
 
     join(e) {
         if (e?.relatedTarget === this.reference) return
+        this.#selectionEnd = -1
         this.wrapper.classList.remove("split")
         this.foreground.scrollTop = 0
         this.wrapper.style.setProperty("--fold-height", "0")

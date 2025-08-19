@@ -1,5 +1,7 @@
 "use strict"
 
+const isNode = typeof window === undefined
+
 class Cursor {
     url = "https://raw.githubusercontent.com/Alexir/CMUdict/master/cmudict-0.7b"
     local = "cmudict-0.7b"
@@ -1353,47 +1355,49 @@ function storedBool(id, stateful, cls, init) {
     el.addEventListener("change", f)
 }
 
-window.addEventListener("load", async function() {
-    const pre = document.getElementsByClassName("double-spaced")[0]
-    ed = new DoubleSpaced(dict, pre)
-    focusCallback()
-    const status = document.getElementById("load-status")
-    const button = document.getElementById("load-dict")
-    const download = () => {
-        button.style.display = "none"
-        status.innerText = "being downloaded"
-        dict.load((portion, total) => {
-            status.innerText = `being downloaded (${portion} of ${total})`
-        }, () => status.innerText = "being stored").then(() => {
-            status.innerText = "local"
-        }).catch(e => {
-            status.innerText = "remote (download failed)"
-            button.style.display = "initial"
-            button.innerText = "retry"
-        })
-    }
-    if (await dict.loading) status.innerText = "local"
-    else if (!(await dict.remoteAvailable)) download()
-    else {
-        status.innerText = "remote"
-        button.style.display = "initial"
-        button.addEventListener("click", download)
-    }
-    const clear = document.getElementById("clear-state")
-    const clearStatus = document.getElementById("clear-status")
-    clear.addEventListener("click", () => {
-        delete window.localStorage["saved"]
-        clearStatus.innerText = "clearing..."
-        dict.clear().then(() => {
-            clearStatus.innerText = ""
+if (!isNode) {
+    window.addEventListener("load", async function() {
+        const pre = document.getElementsByClassName("double-spaced")[0]
+        ed = new DoubleSpaced(dict, pre)
+        focusCallback()
+        const status = document.getElementById("load-status")
+        const button = document.getElementById("load-dict")
+        const download = () => {
+            button.style.display = "none"
+            status.innerText = "being downloaded"
+            dict.load((portion, total) => {
+                status.innerText = `being downloaded (${portion} of ${total})`
+            }, () => status.innerText = "being stored").then(() => {
+                status.innerText = "local"
+            }).catch(e => {
+                status.innerText = "remote (download failed)"
+                button.style.display = "initial"
+                button.innerText = "retry"
+            })
+        }
+        if (await dict.loading) status.innerText = "local"
+        else if (!(await dict.remoteAvailable)) download()
+        else {
             status.innerText = "remote"
             button.style.display = "initial"
-        }).catch(e => {
-            clearStatus.innerText = "clear operation failed"
-            throw e
+            button.addEventListener("click", download)
+        }
+        const clear = document.getElementById("clear-state")
+        const clearStatus = document.getElementById("clear-status")
+        clear.addEventListener("click", () => {
+            delete window.localStorage["saved"]
+            clearStatus.innerText = "clearing..."
+            dict.clear().then(() => {
+                clearStatus.innerText = ""
+                status.innerText = "remote"
+                button.style.display = "initial"
+            }).catch(e => {
+                clearStatus.innerText = "clear operation failed"
+                throw e
+            })
         })
+        storedBool("pronunciations", pre, "splittable", true)
+        storedBool("syllable-counts", pre, "counted", false)
+        storedBool("meter", pre, "metered", true)
     })
-    storedBool("pronunciations", pre, "splittable", true)
-    storedBool("syllable-counts", pre, "counted", false)
-    storedBool("meter", pre, "metered", true)
-})
+}

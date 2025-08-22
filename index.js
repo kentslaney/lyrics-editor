@@ -1,12 +1,120 @@
 "use strict"
 
-class Cursor {
+const isNode = typeof window === "undefined"
+
+const retrieve = !isNode ? fetch : async function(uri) {
+    const fs = require('fs')
+    return {
+        "ok": fs.existsSync(uri),
+        "body": {"getReader": () => Object({"read": () =>
+            new Promise((resolve, reject) => {
+                fs.readFile(uri, (err, data) => {
+                    if (err) return reject(err)
+                    else return resolve({"done": true, "value": data.buffer})
+                })
+            })
+        })}, "json": () =>
+            new Promise((resolve, reject) => {
+                fs.readFile(uri, 'utf8', (err, data) => {
+                    if (err) return reject(err)
+                    else return resolve(JSON.parse(data))
+                })
+            })
+    }
+}
+
+class Dictionary {
     url = "https://raw.githubusercontent.com/Alexir/CMUdict/master/cmudict-0.7b"
     local = "cmudict-0.7b"
     lexicon = 125770
 
+    constructor() {
+        this.loaded = new Promise((resolve, reject) => this.status = s => {
+            this.status = s => {}
+            resolve(s)
+        })
+    }
+
+    async seq(query) {
+        return (await this.lookup(query.split(" "))).map(x => x[0])
+    }
+
+    parse(callback, progress = () => {}, persist = () => []) {
+        return async function(reader) {
+            let prefix = "", existing = [], prev = "", total = 0
+            const pump = async () => {
+                const { done, value } = await reader.read();
+                const args = persist()
+                const textChunk = new TextDecoder().decode(value);
+                const text = prefix + textChunk
+                let line = undefined;
+                for (const next of text.split("\n")) {
+                    if (line === undefined || line.startsWith(";;;")) {
+                        line = next;
+                        continue;
+                    }
+                    const [pre] = line.split(" ", 1)
+                    const post = line.slice(pre.length)
+                    const [word, version] = (pre.endsWith(")") ?
+                        pre.slice(0, -1).split("(") : [pre, "0"])
+                    if (word !== prev) {
+                        if (prev) {
+                            callback(prev, existing, ...args)
+                            existing = []
+                            total++
+                        }
+                        prev = word
+                    }
+                    existing.push(post.trim())
+                    line = next
+                }
+                prefix = line
+                if (!done) {
+                    if (!isNode) {
+                        console.info("downloaded", total, "of", this.lexicon,
+                            "rows; % complete:",
+                            Math.round(total / this.lexicon * 1000) / 10)
+                    }
+                    progress(total, this.lexicon)
+                    return pump()
+                }
+                callback(prev, existing, ...args)
+                console.assert(++total === this.lexicon)
+                console.info("pronunciation db downloaded")
+            };
+            return pump();
+        }.bind(this)
+    }
+
+    async lookup(query) {
+        const single = typeof query === "string"
+        if (single ? query === "" : !query.filter(x => x).length)
+            return single ? undefined :
+                [...new Array(query.length).keys()].map(x => undefined)
+        if (await this.loaded) {
+            if (single) {
+                return this.localLookup(query)
+            } else {
+                const queries = query.map(
+                    x => x === "" ? undefined : this.localLookup(x))
+                let res = []
+                for await (const i of queries) {
+                    res.push(i)
+                }
+                return res
+            }
+        } else {
+            const res = await this.remoteLookup(query)
+            if (single) return this.reformatRemote(res)
+            else return res.map(this.reformatRemote)
+        }
+    }
+}
+
+class Cursor extends Dictionary {
     #db;
     constructor() {
+        super()
         this.create()
     }
 
@@ -14,10 +122,6 @@ class Cursor {
         const request = indexedDB.open("words", 1);
         let done;
         this.loading = new Promise((resolve, reject) => done = resolve)
-        this.loaded = new Promise((resolve, reject) => this.status = s => {
-            this.status = s => {}
-            resolve(s)
-        })
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result
@@ -55,79 +159,33 @@ class Cursor {
     }
 
     async load(progress = () => {}, storing = () => {}) {
-        const db = this.#db, lexicon = this.lexicon, commits = [];
+        const commits = [];
         console.info("populating pronunciation db")
         return fetch((await this.remoteAvailable) ? this.local : this.url)
-            .then((response) => {
+            .then((response, reject) => {
                 if (!response.ok) {
                     reject(response)
                 }
                 return response.body.getReader();
             })
-            .then(async function(reader) {
-                let prefix = "", existing = [], prev = "", total = 0
-                const pump = async () => {
-                    const { done, value } = await reader.read();
-
-                    const tx = db.transaction("pronunciations", 'readwrite');
-                    const store = tx.objectStore("pronunciations");
-
-                    const textChunk = new TextDecoder().decode(value);
-                    const text = prefix + textChunk
-                    let line = undefined;
-                    for (const next of text.split("\n")) {
-                        if (line === undefined || line.startsWith(";;;")) {
-                            line = next;
-                            continue;
-                        }
-                        const [pre] = line.split(" ", 1)
-                        const post = line.slice(pre.length)
-                        const [word, version] = (pre.endsWith(")") ?
-                            pre.slice(0, -1).split("(") : [pre, "0"])
-                        if (word !== prev) {
-                            if (prev) {
-                                commits.push(new Promise((resolve, reject) => {
-                                    const op = store.add({
-                                        word: prev,
-                                        pronunciation: existing
-                                    });
-                                    op.onsuccess = resolve
-                                    op.onerror = reject
-                                }))
-                                existing = []
-                                total++
-                            }
-                            prev = word
-                        }
-                        existing.push(post.trim())
-                        line = next
-                    }
-                    prefix = line
-                    if (!done) {
-                        console.info("downloaded", total, "of", lexicon,
-                            "rows; % complete:",
-                            Math.round(total / lexicon * 1000) / 10)
-                        progress(total, lexicon)
-                        return pump()
-                    }
-                    commits.push(new Promise((resolve, reject) => {
-                        const op = store.add({
-                            word: prev,
-                            pronunciation: existing
-                        });
-                        op.onsuccess = resolve
-                        op.onerror = reject
-                    }))
-                    console.assert(++total === lexicon)
-                    console.info("pronunciation db downloaded")
-                };
-                return pump();
-            })
+            .then(this.parse((prev, existing, store) => {
+                commits.push(new Promise((resolve, reject) => {
+                    const op = store.add({
+                        word: prev,
+                        pronunciation: existing
+                    });
+                    op.onsuccess = resolve
+                    op.onerror = reject
+                }))
+            }, progress, () => {
+                const tx = this.#db.transaction("pronunciations", 'readwrite')
+                return [tx.objectStore("pronunciations")]
+            }))
             .then(storing)
             .then(() => Promise.allSettled(commits))
             .then((() => {
                 console.info("pronunciation db populated")
-                const tx = db.transaction("status", 'readwrite');
+                const tx = this.#db.transaction("status", 'readwrite');
                 const store = tx.objectStore("status");
                 store.put({ id: "loaded", value: true });
                 this.loaded = new Promise((resolve, reject) => resolve(true))
@@ -178,37 +236,47 @@ class Cursor {
             else document.addEventListener("load", f)
         })
     }
+}
 
-    async lookup(query) {
-        const single = typeof query === "string"
-        if (single ? query === "" : !query.filter(x => x).length)
-            return single ? undefined :
-                [...new Array(query.length).keys()].map(x => undefined)
-        if (await this.loaded) {
-            if (single) {
-                return this.localLookup(query)
-            } else {
-                const queries = query.map(
-                    x => x === "" ? undefined : this.localLookup(x))
-                let res = []
-                for await (const i of queries) {
-                    res.push(i)
-                }
-                return res
-            }
-        } else {
-            const res = await this.remoteLookup(query)
-            if (single) return this.reformatRemote(res)
-            else return res.map(this.reformatRemote)
-        }
+class Transient extends Dictionary {
+    constructor() {
+        super()
+        this.load()
     }
 
-    async seq(query) {
-        return (await this.lookup(query.split(" "))).map(x => x[0])
+    #kv
+    async load() {
+        this.#kv = {}
+        return retrieve(this.local)
+            .then((response) => {
+                if (!response.ok) {
+                    return new Promise((resolve, reject) => {
+                        fetch(this.url)
+                            .then(res => res.arrayBuffer())
+                            .then(bytes => require('fs').writeFileSync(
+                                this.local, new Uint8Array(bytes)))
+                            .then(() => retrieve(this.local))
+                            .then(response => resolve(
+                                response.body.getReader()))
+                    })
+                }
+                return response.body.getReader();
+            })
+            .then(this.parse((prev, existing) => {
+                this.#kv[prev] = existing
+            }))
+            .then((() => {
+                this.loaded = new Promise((resolve, reject) => resolve(true))
+                this.status(true)
+            }).bind(this))
+    }
+
+    async localLookup(query) {
+        return this.#kv[query.toUpperCase()]
     }
 }
 
-const dict = new Cursor()
+const dict = isNode ? new Transient() : new Cursor()
 
 function cumsum(arr) {
     let total = 0
@@ -218,7 +286,7 @@ function cumsum(arr) {
 // https://ismir2009.ismir.net/proceedings/OS8-1.pdf
 class Similarities {
     constructor() {
-        this.load = fetch("OS8-1.json").then(res => res.json()).then((res => {
+        this.load = retrieve("OS8-1.json").then(r => r.json()).then((res => {
             for (const key of Object.keys(res)) {
                 this[key] = res[key]
             }
@@ -1353,47 +1421,50 @@ function storedBool(id, stateful, cls, init) {
     el.addEventListener("change", f)
 }
 
-window.addEventListener("load", async function() {
-    const pre = document.getElementsByClassName("double-spaced")[0]
-    ed = new DoubleSpaced(dict, pre)
-    focusCallback()
-    const status = document.getElementById("load-status")
-    const button = document.getElementById("load-dict")
-    const download = () => {
-        button.style.display = "none"
-        status.innerText = "being downloaded"
-        dict.load((portion, total) => {
-            status.innerText = `being downloaded (${portion} of ${total})`
-        }, () => status.innerText = "being stored").then(() => {
-            status.innerText = "local"
-        }).catch(e => {
-            status.innerText = "remote (download failed)"
-            button.style.display = "initial"
-            button.innerText = "retry"
-        })
-    }
-    if (await dict.loading) status.innerText = "local"
-    else if (!(await dict.remoteAvailable)) download()
-    else {
-        status.innerText = "remote"
-        button.style.display = "initial"
-        button.addEventListener("click", download)
-    }
-    const clear = document.getElementById("clear-state")
-    const clearStatus = document.getElementById("clear-status")
-    clear.addEventListener("click", () => {
-        delete window.localStorage["saved"]
-        clearStatus.innerText = "clearing..."
-        dict.clear().then(() => {
-            clearStatus.innerText = ""
+if (!isNode) {
+    window.addEventListener("load", async function() {
+        const pre = document.getElementsByClassName("double-spaced")[0]
+        ed = new DoubleSpaced(dict, pre)
+        focusCallback()
+        const status = document.getElementById("load-status")
+        const button = document.getElementById("load-dict")
+        const download = () => {
+            button.style.display = "none"
+            status.innerText = "being downloaded"
+            dict.load((portion, total) => {
+                status.innerText = `being downloaded (${portion} of ${total})`
+            }, () => status.innerText = "being stored").then(() => {
+                status.innerText = "local"
+            }).catch(e => {
+                status.innerText = "remote (download failed)"
+                button.style.display = "initial"
+                button.innerText = "retry"
+                console.error(e)
+            })
+        }
+        if (await dict.loading) status.innerText = "local"
+        else if (!(await dict.remoteAvailable)) download()
+        else {
             status.innerText = "remote"
             button.style.display = "initial"
-        }).catch(e => {
-            clearStatus.innerText = "clear operation failed"
-            throw e
+            button.addEventListener("click", download)
+        }
+        const clear = document.getElementById("clear-state")
+        const clearStatus = document.getElementById("clear-status")
+        clear.addEventListener("click", () => {
+            delete window.localStorage["saved"]
+            clearStatus.innerText = "clearing..."
+            dict.clear().then(() => {
+                clearStatus.innerText = ""
+                status.innerText = "remote"
+                button.style.display = "initial"
+            }).catch(e => {
+                clearStatus.innerText = "clear operation failed"
+                throw e
+            })
         })
+        storedBool("pronunciations", pre, "splittable", true)
+        storedBool("syllable-counts", pre, "counted", false)
+        storedBool("meter", pre, "metered", true)
     })
-    storedBool("pronunciations", pre, "splittable", true)
-    storedBool("syllable-counts", pre, "counted", false)
-    storedBool("meter", pre, "metered", true)
-})
+}

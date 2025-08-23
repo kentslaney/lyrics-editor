@@ -4,22 +4,18 @@ const isNode = typeof window === "undefined"
 
 const retrieve = !isNode ? fetch : async function(uri) {
     const fs = require('fs')
+    const fp = (f, ...encoding) => () => new Promise((resolve, reject) => {
+        fs.readFile(uri, ...encoding, (err, data) => {
+            if (err) return reject(err)
+            else return resolve(f(data))
+        })
+    })
     return {
         "ok": fs.existsSync(uri),
-        "body": {"getReader": () => Object({"read": () =>
-            new Promise((resolve, reject) => {
-                fs.readFile(uri, (err, data) => {
-                    if (err) return reject(err)
-                    else return resolve({"done": true, "value": data.buffer})
-                })
-            })
-        })}, "json": () =>
-            new Promise((resolve, reject) => {
-                fs.readFile(uri, 'utf8', (err, data) => {
-                    if (err) return reject(err)
-                    else return resolve(JSON.parse(data))
-                })
-            })
+        "body": {"getReader": () => Object({"read": fp(
+            data => Object({"done": true, "value": data.buffer}))})},
+        "json": fp(JSON.parse, 'utf8'),
+        "text": fp(x => x, 'utf8')
     }
 }
 
@@ -562,6 +558,10 @@ class MaxHeapPeek extends MaxHeapKV {
 // This isn't true of the consonants matrix, but, for vowels, each symbol
 // matches the most with itself. That means the vowel's nodes should be matched
 // with themselves before compared with others, which can be done in a container
+// class. Further, all the diagonal entries of the vowels matrix are greater
+// than all the off-diagonal entires, so the cross-comparisons can be split out.
+// This is convenient, especially because the suffix tree isn't currently set up
+// for fuzzy matching.
 class Ngram extends MaxHeapPeek {
     constructor(sim) {
         super()
@@ -709,7 +709,7 @@ async function lcs(seq) {
 }
 
 /*
-fetch("").then(res => res.text()).then(res => {
+retrieve("index.html").then(res => res.text()).then(res => {
     res = res.match(/<textarea[^>]*>\s*(.*)<\/textarea>/s)[1]
     res = res.replace(/\s\S+{[\/\*]+}/g, "").replace(/{[0-9]+}/g, "")
     return res.replace(/[-_]/g, " ").replace(/[,\?]/g, "").replace(/\n/g, " ")

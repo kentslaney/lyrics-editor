@@ -69,6 +69,7 @@ async def websocket_handler(request):
 
 static_files = {
     "/": compiled,
+    "/index.html": compiled,
     "/static": "index.html",
     "/index.js": "index.js",
     "/index.css": "index.css",

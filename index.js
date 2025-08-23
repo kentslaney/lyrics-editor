@@ -559,6 +559,9 @@ class MaxHeapPeek extends MaxHeapKV {
     }
 }
 
+// This isn't true of the consonants matrix, but, for vowels, each symbol
+// matches the most with itself. That means the vowel's nodes should be matched
+// with themselves before compared with others, which can be done in a container
 class Ngram extends MaxHeapPeek {
     constructor(sim) {
         super()

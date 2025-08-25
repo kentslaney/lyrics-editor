@@ -993,7 +993,7 @@ class DoubleSpaced {
                 const breaks = Array.prototype.filter.call(
                     this.editor.value, x => x === "\n").length
                 let lim = 0
-                for (let i = 0, j = 0; i <= breaks; [i++, el = el?.nextSibling]) {
+                for (let i = 0, j = 0; i <= breaks; i++, el = el?.nextSibling) {
                     let lo
                     while (el && (el.nodeType !== 1 || el.tagName !== "BR")) {
                         if (el.classList?.contains("below-fold")) {

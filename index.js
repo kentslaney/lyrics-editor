@@ -619,7 +619,7 @@ class Suffixes {
 
     get(i) {
         if (i === this.aligned.length) {
-            return this.children[this.sim.vowels.length] =
+            return this.children[this.sim.vowels.length] ||=
                 new Suffixes(this.sim).init(this).debug("$")
         }
         const vowel = this.step(i)

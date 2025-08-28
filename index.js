@@ -452,11 +452,6 @@ function compare(query0, query1) {
     })
 }
 
-/*
-compare("battery", "battle me")
-compare("orange", "door hinge")
-*/
-
 class MaxHeap {
     constructor() {
         this.arr = []
@@ -720,23 +715,6 @@ async function lcs(seq) {
     await phonemes.load
     return new Suffixes(phonemes).build(bar)
 }
-
-/*
-retrieve("index.html").then(res => res.text()).then(res => {
-    res = res.match(/<textarea[^>]*>\s*(.*)<\/textarea>/s)[1]
-    res = res.replace(/\s\S+{[\/\*]+}/g, "").replace(/{[0-9]+}/g, "")
-    return res.replace(/[-_]/g, " ").replace(/[,\?]/g, "").replace(/\n/g, " ")
-}).then(lcs).then(tree => {
-    console.log(tree.repr())
-})
-
-lcs("New York City gritty committee pity the fool").then(tree => {
-    console.log(tree.repr())
-    let bag = tree.children[9].incoming()
-    console.log(bag.pop())
-    console.log(bag)
-})
-*/
 
 class Edit {
     constructor(iter0, iter1, n = undefined, m = undefined) {
@@ -1436,7 +1414,24 @@ function storedBool(id, stateful, cls, init) {
     el.addEventListener("change", f)
 }
 
-if (!isNode) {
+if (isNode) {
+    compare("battery", "battle me")
+    compare("orange", "door hinge")
+
+    /*
+    retrieve("index.html").then(res => res.text()).then(res => {
+        res = res.match(/<textarea[^>]*>\s*(.*)<\/textarea>/s)[1]
+        res = res.replace(/\s\S+{[\/\*]+}/g, "").replace(/{[0-9]+}/g, "")
+        return res.replace(/[-_]/g, " ").replace(/[,\?]/g, "").replace(/\n/g, " ")
+    }).then(lcs).then(tree => {
+        console.log(tree.repr())
+    })
+    */
+
+    lcs("New York City gritty committee pity the fool").then(tree => {
+        console.log(tree.repr())
+    })
+} else {
     window.addEventListener("load", async function() {
         const pre = document.getElementsByClassName("double-spaced")[0]
         ed = new DoubleSpaced(dict, pre)

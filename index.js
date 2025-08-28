@@ -589,10 +589,9 @@ class Ngram extends MaxHeapPeek {
 class Suffixes {
     constructor(sim) {
         this.sim = sim
-        this.children = [...Array(sim.vowels.length)]
+        this.children = [...Array(sim.vowels.length + 1)]
         this.prefixes = []
         this.refs = []
-        this.postfix = null
         this.cache = null
         this.root = this
         this.depth = 0
@@ -619,6 +618,10 @@ class Suffixes {
     }
 
     get(i) {
+        if (i === this.aligned.length) {
+            return this.children[this.sim.vowels.length] =
+                new Suffixes(this.sim).init(this).debug("$")
+        }
         const vowel = this.step(i)
         if (this.children[vowel] === undefined) {
             this.children[vowel] = new Suffixes(this.sim)
@@ -641,16 +644,12 @@ class Suffixes {
         this.refs.push(ref)
         const boundary = this.aligned[i].length > 1, leaf = this.childless
         word &&= word.concat(this.aligned[i].slice(0, 1))
-        const ending = i >= this.aligned.length - 3
-        if (ending) {
-            this.postfix = this.aligned.length - 1
-            if (!leaf) return
-        }
-        if (!leaf || this.refs.length > 1 && (ending || !(boundary &&
-                this.cache && JSON.stringify(word) == this.cache))) {
+        if (i >= this.aligned.length - 1) return
+        if (!leaf || this.prefixes.length > 1 && !(boundary &&
+                this.cache && JSON.stringify(word) == this.cache)) {
             this.cache = null
-            const it = leaf ? this.prefixes.slice(0, ending ? -1 : undefined)
-                .map((x, j) => [j, x]) : [[this.refs.length - 1, i]]
+            const it = leaf ? this.prefixes.map((x, j) => [j, x]) :
+                [[this.prefixes.length - 1, i]]
             for (const [j, k] of it) {
                 this.get(k + 3).resolve(k + 2, j, boundary ?
                     this.aligned[i].slice(-1) : word)
@@ -671,8 +670,7 @@ class Suffixes {
 
     flat() {
         return this.childless ? this.prefixes : this.occupied
-            .map(x => this.children[x].flat()).flat()
-            .concat(this.postfix === null ? [] : [this.postfix]).map(x => x - 2)
+            .map(x => this.children[x].flat()).flat().map(x => x - 2)
     }
 
     repr() {
@@ -681,8 +679,7 @@ class Suffixes {
             pre = this.childless ? "\u2500" : "\u252C"
             pre += this.comments + " "
             pre += this.flat().map(x => this.aligned[x].map(x =>
-                x.join("-")).join("_") + (x === this.aligned.length - 3 ? ";" +
-                this.aligned.slice(-1)[0][0].join("-") : "")).join(" ")
+                x.join("-")).join("_")).join(" ")
         }
         const children = this.occupied.map(x => this.children[x].repr())
         return pre + (children.length > 1 ? "\n" : "") + children.slice(0, -1)
@@ -705,7 +702,9 @@ class Suffixes {
 
     outgoing() {
         const res = new MaxHeapPeek()
-        this.occupied.forEach(x => res.push(x, this.sim.vowels[x][x]))
+        this.occupied.forEach(x => {
+            if (x !== this.sim.vowels.length) res.push(this.sim.vowels[x][x], x)
+        })
         return res
     }
 }
@@ -1422,7 +1421,8 @@ if (isNode) {
     retrieve("index.html").then(res => res.text()).then(res => {
         res = res.match(/<textarea[^>]*>\s*(.*)<\/textarea>/s)[1]
         res = res.replace(/\s\S+{[\/\*]+}/g, "").replace(/{[0-9]+}/g, "")
-        return res.replace(/[-_]/g, " ").replace(/[,\?]/g, "").replace(/\n/g, " ")
+        res = res.replace(/[-_]/g, " ").replace(/[,\?]/g, "")
+        return res.replace(/\n/g, " ")
     }).then(lcs).then(tree => {
         console.log(tree.repr())
     })

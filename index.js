@@ -337,11 +337,12 @@ class Similarities {
         }
     }
 
-    order(type, indices0, indices1, lu=true) {
+    order(type, indices0, indices1, lu=true, diag=true) {
         indices0 = indices0 === undefined ?
             [...Array(this[type].length).keys()] : indices0
         indices1 = indices1 === undefined ? indices0 : indices1
-        return indices0.map(i => (lu ? indices1.filter(j => j <= i) : indices1)
+        return indices0.map(i =>
+                (lu ? indices1.filter(j => j <= i - !diag) : indices1)
                 .map(j => [i, j, this[type][Math.max(i, j)][Math.min(i, j)]]))
             .flat().toSorted(([,,a], [,,b]) => b - a)
     }
@@ -700,6 +701,18 @@ class Suffixes {
             this.aligned[x].flat().map(x => this.sim.group[x][1])
                 .filter(x => x !== null))
     }
+
+    incoming() {
+        const res = new Ngram(this.sim)
+        res.push(...this.consonants())
+        return res
+    }
+
+    outgoing() {
+        const res = new MaxHeapPeek()
+        this.occupied.forEach(x => res.push(x, this.sim.vowels[x][x]))
+        return res
+    }
 }
 
 async function lcs(seq) {
@@ -719,8 +732,7 @@ retrieve("index.html").then(res => res.text()).then(res => {
 
 lcs("New York City gritty committee pity the fool").then(tree => {
     console.log(tree.repr())
-    let bag = new Ngram(phonemes)
-    bag.push(...tree.children[9].consonants())
+    let bag = tree.children[9].incoming()
     console.log(bag.pop())
     console.log(bag)
 })

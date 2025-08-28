@@ -76,7 +76,7 @@ class Dictionary {
                 }
                 callback(prev, existing, ...args)
                 console.assert(++total === this.lexicon)
-                console.info("pronunciation db downloaded")
+                if (!isNode) console.info("pronunciation db downloaded")
             };
             return pump();
         }.bind(this)
@@ -247,9 +247,10 @@ class Transient extends Dictionary {
             .then((response) => {
                 if (!response.ok) {
                     return new Promise((resolve, reject) => {
-                        fetch(this.url)
-                            .then(res => res.arrayBuffer())
-                            .then(bytes => require('fs').writeFileSync(
+                        fetch(this.url).then(res => {
+                                console.info("pronunciation db downloaded")
+                                return res.arrayBuffer()
+                            }).then(bytes => require('fs').writeFileSync(
                                 this.local, new Uint8Array(bytes)))
                             .then(() => retrieve(this.local))
                             .then(response => resolve(

@@ -474,19 +474,28 @@ class MaxHeap {
     pop() {
         if (this.arr.length <= 1) return this.arr.pop()
         const res = this.arr[0]
-        this.arr[0] = this.arr.pop()
+        this.replace(this.arr.pop())
+        return res
+    }
+
+    replace(x) {
+        this.arr[0] = x
         for (let i = 0, max = 0;; i = max) {
             const l = 2 * i + 1, r = 2 * i + 2
             if (l < this.arr.length && this.arr[l] > this.arr[max]) max = l
             if (r < this.arr.length && this.arr[r] > this.arr[max]) max = r
-            if (max === i) return res
+            if (max === i) return
             else this.swap(i, max)
         }
     }
 
+    get empty() {
+        return this.arr.length === 0
+    }
+
     [Symbol.iterator]() {
         return {
-            next: () => ({ done: this.arr.length === 0, value: this.pop() })
+            next: () => ({ done: this.empty, value: this.pop() })
         }
     }
 }
@@ -522,11 +531,15 @@ class MaxHeapPeek extends MaxHeapKV {
         this.held = false
     }
 
-    push(...args) {
+    release() {
         if (this.held) {
             super.push(...this.prev)
             this.held = false
         }
+    }
+
+    push(...args) {
+        this.release()
         super.push(...args)
         this.prev = null
     }
@@ -541,7 +554,7 @@ class MaxHeapPeek extends MaxHeapKV {
     }
 
     hold() {
-        console.assert(this.prev !== null)
+        console.assert(this.prev !== null && this.held === false)
         this.held = true
         return this
     }
@@ -549,6 +562,15 @@ class MaxHeapPeek extends MaxHeapKV {
     peek() {
         if (this.held) return this.prev
         else return [this.arr[0], this.val[0]]
+    }
+
+    replace(x) {
+        this.release()
+        super.replace(x)
+    }
+
+    get empty() {
+        return this.held === false && super.empty
     }
 }
 
@@ -564,6 +586,7 @@ class Ngram extends MaxHeapPeek {
         super()
         this.sim = sim
         this.bags = []
+        this.mapping = null
     }
 
     _push(consonants) { // ordered indices
@@ -584,6 +607,67 @@ class Ngram extends MaxHeapPeek {
 
     push(...consonants) {
         return consonants.map(x => this._push(x))
+    }
+
+    remap(k, [v0, v1]) {
+        if (this.mapping === null) return [k, [v0, v1]]
+        return [k, [this.mapping[v0], this.mapping[v1]]]
+    }
+
+    pop() {
+        return this.remap(...super.pop())
+    }
+
+    peek() {
+        return this.remap(...super.peek())
+    }
+}
+
+class OverlayKV extends Ngram {
+    constructor(sim, offset) {
+        super(sim)
+        this.offset = offset
+    }
+
+    remap(k, v) {
+        return [k + this.offset, super.remap(k, v)[1]]
+    }
+}
+
+class MaxMergedKV {
+    constructor(sources) {
+        this.sources = sources
+        this.heap = new MaxHeapPeek()
+        for (let [source, heap] of Object.entries(sources)) {
+            this.heap.push(heap.peek()[0], source)
+        }
+    }
+
+    pop() {
+        if (this.heap.empty) return this.heap.pop()
+        const source = this.heap.peek()[1]
+        const [k, v] = this.sources[source].pop()
+        if (this.sources[source].empty) this.heap.pop()
+        else this.heap.replace(this.sources[source].peek()[0])
+        return this.prev = [source, k, v]
+    }
+
+    peek() {
+        const source = this.heap.peek()[1]
+        const [k, v] = this.sources[source].peek()
+        return [source, k, v]
+    }
+
+    hold() {
+        this.heap.hold()
+        this.sources[this.heap.peek()[1]].hold()
+        return this
+    }
+
+    [Symbol.iterator]() {
+        return {
+            next: () => ({ done: this.heap.empty, value: this.pop() })
+        }
     }
 }
 
@@ -695,18 +779,31 @@ class Suffixes {
                 .filter(x => x !== null))
     }
 
-    incoming() {
-        const res = new Ngram(this.sim)
+    incoming(offset = null) {
+        const res = offset === null ? new Ngram(this.sim) :
+            new OverlayKV(this.sim, offset)
         res.push(...this.consonants())
         return res
     }
 
-    outgoing() {
-        const res = new MaxHeapPeek()
+    partials() {
+        const res = new Ngram(this.sim), postfixes = []
         this.occupied.forEach(x => {
-            if (x !== this.sim.vowels.length) res.push(this.sim.vowels[x][x], x)
+            postfixes.push(...this.children[x].refs)
+            res.push(...this.children[x].consonants())
         })
+        res.mapping = postfixes
         return res
+    }
+
+    outgoing() {
+        const res = Object.fromEntries(
+            this.occupied
+            .map(x => [x, this.children[x].incoming(this.sim.vowels[x][x])])
+            .filter(([k, v]) => k !== this.sim.vowels.length && !v.empty))
+        if (!this.parentless && this.prefixes.length > 1)
+            res[-1] = this.partials()
+        return new MaxMergedKV(res)
     }
 }
 

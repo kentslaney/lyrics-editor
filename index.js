@@ -649,7 +649,7 @@ class MaxMergedKV {
         const [k, v] = this.sources[source].pop()
         if (this.sources[source].empty) this.heap.pop()
         else this.heap.replace(this.sources[source].peek()[0])
-        return this.prev = [source, k, v]
+        return [source, k, v]
     }
 
     peek() {
@@ -799,8 +799,8 @@ class Suffixes {
     outgoing() {
         const res = Object.fromEntries(
             this.occupied
-            .map(x => [x, this.children[x].incoming(this.sim.vowels[x][x])])
-            .filter(([k, v]) => k !== this.sim.vowels.length && !v.empty))
+                .map(x => [x, this.children[x].incoming(this.sim.vowels[x][x])])
+                .filter(([k, v]) => k !== this.sim.vowels.length && !v.empty))
         if (!this.parentless && this.prefixes.length > 1)
             res[-1] = this.partials()
         return new MaxMergedKV(res)

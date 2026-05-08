@@ -589,6 +589,7 @@ class Ngram extends MaxHeapPeek {
         this.mapping = null
     }
 
+    // factorize M into QΛQ^T for XMX^T with X as row-major counts
     _push(consonants) { // ordered indices
         const idx = this.bags.length
         consonants = consonants.length ?

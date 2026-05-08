@@ -750,6 +750,10 @@ class Suffixes {
             .filter(x => x !== undefined)
     }
 
+    get branching() {
+        return this.occupied.filter(x => !this.children[x].childless)
+    }
+
     get childless() {
         return this.occupied.length === 0
     }
@@ -802,8 +806,14 @@ class Suffixes {
             this.occupied
                 .map(x => [x, this.children[x].incoming(this.sim.vowels[x][x])])
                 .filter(([k, v]) => k !== this.sim.vowels.length && !v.empty))
-        if (!this.parentless && this.prefixes.length > 1)
+        if (this.parentless) {
+            // vowels children to be compared without prefixes
+            res[-1] = new MaxHeapPeek()
+            this.branching.forEach(x => res[-1].push(this.sim.vowels[x][x], x))
+        } else if (this.prefixes.length > 1) {
+            // prefixes compared without the final vowel node
             res[-1] = this.partials()
+        }
         return new MaxMergedKV(res)
     }
 }
@@ -1527,7 +1537,9 @@ if (isNode) {
     })
     */
 
-    lcs("New York City gritty committee pity the fool").then(tree => {
+    var tree
+    lcs("New York City gritty committee pity the fool").then(tree_ => {
+        tree = tree_
         console.log(tree.repr())
     })
 } else {

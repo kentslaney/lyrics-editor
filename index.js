@@ -612,8 +612,9 @@ class Ngram extends MaxHeapPeek {
         return consonants.map(x => this._push(x))
     }
 
-    remap(k, [v0, v1]) {
-        if (this.mapping === null) return [k, [v0, v1]]
+    remap(k, v) {
+        if (this.mapping === null || v === undefined) return [k, v]
+        const [v0, v1] = v
         return [k, [this.mapping[v0], this.mapping[v1]]]
     }
 
@@ -690,8 +691,8 @@ class NodeHeap extends MaxMergedKV {
     remap(source, score, deref) {
         if (source === undefined || source == -1)
             return [source, score, deref, undefined]
-        let [v0, v1] = deref
-        let refs = this.node.children[source].refs
+        const [v0, v1] = deref
+        const refs = this.node.children[source].refs
         return [source, score, deref, [refs[v0], refs[v1]]]
     }
 
@@ -847,12 +848,12 @@ class Suffixes {
                 .filter(([k, v]) => k !== this.sim.vowels.length && !v.empty))
         if (this.parentless) {
             // vowel children to be compared without root prefixes
-            res[-1] = new MaxHeapPeek()
+            if (this.branching.length) res[-1] = new MaxHeapPeek()
             this.branching.forEach(x => res[-1].push(this.sim.vowels[x][x], x))
             return new RootHeap(this, res)
         } else if (this.prefixes.length > 1) {
             // prefixes compared without the final vowel node
-            res[-1] = this.partials()
+            if (this.occupied.length) res[-1] = this.partials()
             return new VowelHeap(this, res)
         }
     }
@@ -1562,6 +1563,12 @@ function storedBool(id, stateful, cls, init) {
     el.addEventListener("change", f)
 }
 
+var tree
+lcs("New York City gritty committee pity the fool").then(tree_ => {
+    tree = tree_
+    console.log(tree.repr())
+})
+
 if (isNode) {
     compare("battery", "battle me")
     compare("orange", "door hinge")
@@ -1576,12 +1583,6 @@ if (isNode) {
         console.log(tree.repr())
     })
     */
-
-    var tree
-    lcs("New York City gritty committee pity the fool").then(tree_ => {
-        tree = tree_
-        console.log(tree.repr())
-    })
 } else {
     window.addEventListener("load", async function() {
         const pre = document.getElementsByClassName("double-spaced")[0]

@@ -807,7 +807,7 @@ class Suffixes {
                 .map(x => [x, this.children[x].incoming(this.sim.vowels[x][x])])
                 .filter(([k, v]) => k !== this.sim.vowels.length && !v.empty))
         if (this.parentless) {
-            // vowels children to be compared without prefixes
+            // vowel children to be compared without root prefixes
             res[-1] = new MaxHeapPeek()
             this.branching.forEach(x => res[-1].push(this.sim.vowels[x][x], x))
         } else if (this.prefixes.length > 1) {

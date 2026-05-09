@@ -581,6 +581,8 @@ class MaxHeapPeek extends MaxHeapKV {
 // than all the off-diagonal entires, so the cross-comparisons can be split out.
 // This is convenient, especially because the suffix tree isn't currently set up
 // for fuzzy matching.
+// This is called n-gram even though it's currently a 1-gram bag of phonemes
+//     since that's how it would be applied to DNA sequences.
 class Ngram extends MaxHeapPeek {
     constructor(sim) {
         super()
@@ -655,6 +657,7 @@ class MaxMergedKV {
 
     peek() {
         const source = this.heap.peek()[1]
+        if (source === undefined) return [undefined, undefined, undefined]
         const [k, v] = this.sources[source].peek()
         return [source, k, v]
     }
@@ -670,8 +673,44 @@ class MaxMergedKV {
             next: () => ({ done: this.heap.empty, value: this.pop() })
         }
     }
+
+    // debugging method
+    chain(n) {
+        for (let i of Array(n)) this.pop()
+        return this
+    }
 }
 
+class NodeHeap extends MaxMergedKV {
+    constructor(node, sources) {
+        super(sources)
+        this.node = node
+    }
+
+    remap(source, score, deref) {
+        if (source === undefined || source == -1)
+            return [source, score, deref, undefined]
+        let [v0, v1] = deref
+        let refs = this.node.children[source].refs
+        return [source, score, deref, [refs[v0], refs[v1]]]
+    }
+
+    pop() {
+        return this.remap(...super.pop())
+    }
+
+    peek() {
+        return this.remap(...super.peek())
+    }
+}
+
+class VowelHeap extends NodeHeap {}
+class RootHeap extends NodeHeap {}
+
+// Having a max heap for each vowel’s deltas independent of its parent’s score
+//     isn’t the most efficient since the distance is fast to compute.
+// It maybe scales better to KNN for bio applications but really it's just being
+//     done this way for convenience's sake.
 class Suffixes {
     constructor(sim) {
         this.sim = sim
@@ -810,11 +849,12 @@ class Suffixes {
             // vowel children to be compared without root prefixes
             res[-1] = new MaxHeapPeek()
             this.branching.forEach(x => res[-1].push(this.sim.vowels[x][x], x))
+            return new RootHeap(this, res)
         } else if (this.prefixes.length > 1) {
             // prefixes compared without the final vowel node
             res[-1] = this.partials()
+            return new VowelHeap(this, res)
         }
-        return new MaxMergedKV(res)
     }
 }
 

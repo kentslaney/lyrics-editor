@@ -615,7 +615,7 @@ class Ngram extends MaxHeapPeek {
     remap(k, v) {
         if (this.mapping === null || v === undefined) return [k, v]
         const [v0, v1] = v
-        return [k, [this.mapping[v0], this.mapping[v1]]]
+        return [k, [this.mapping[v0], this.mapping[v1]].sort()]
     }
 
     pop() {

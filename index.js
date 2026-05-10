@@ -844,7 +844,8 @@ class Suffixes {
     outgoing() {
         const res = Object.fromEntries(
             this.occupied
-                .map(x => [x, this.children[x].incoming(this.sim.vowels[x][x])])
+                .map(x => [x, this.children[x].incoming(
+                    this.sim.vowels[x]?.[x])])
                 .filter(([k, v]) => k !== this.sim.vowels.length && !v.empty))
         if (this.parentless) {
             // vowel children to be compared without root prefixes

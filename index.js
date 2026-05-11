@@ -20,9 +20,12 @@ const retrieve = !isNode ? fetch : async function(uri) {
 }
 
 class Dictionary {
-    url = "https://raw.githubusercontent.com/Alexir/CMUdict/master/cmudict-0.7b"
-    local = "cmudict-0.7b"
-    lexicon = 125770
+    version = 2
+    url = (
+        "https://raw.githubusercontent.com/kentslaney/cmudict/" +
+        "7479086/cmudict.dict")
+    local = "cmudict/cmudict.dict"
+    lexicon = 126052
 
     constructor() {
         this.loaded = new Promise((resolve, reject) => this.status = s => {
@@ -32,7 +35,21 @@ class Dictionary {
     }
 
     async seq(query) {
-        return (await this.lookup(query.split(" "))).map(x => x[0])
+        return new Promise((resolve, reject) => {
+            const words = query.split(" ")
+            this.lookup(words).then(result => {
+                if (result.some(x => x === undefined)) {
+                    const missing = result.map((x, i) => x ? undefined : i)
+                        .filter(x => x !== undefined).map(x => words[x])
+                    reject(new Error(
+                        `Missing pronunciation` +
+                        `${missing.length > 1 ? 's' : ''} ` +
+                        `for "${missing.join('", "')}"`))
+                } else {
+                    resolve(result.map(x => x[0]))
+                }
+            })
+        })
     }
 
     parse(callback, progress = () => {}, persist = () => []) {
@@ -115,12 +132,15 @@ class Cursor extends Dictionary {
     }
 
     create() {
-        const request = indexedDB.open("words", 1);
+        const request = indexedDB.open("words", this.version);
         let done;
         this.loading = new Promise((resolve, reject) => done = resolve)
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result
+            db.deleteObjectStore("pronunciations")
+            db.deleteObjectStore("status")
+
             db.createObjectStore("pronunciations", { keyPath: 'word' });
             const store = db.createObjectStore("status", { keyPath: 'id' });
             store.add({ id: "loaded", value: false })
@@ -138,6 +158,24 @@ class Cursor extends Dictionary {
                 done(res)
             }).bind(this)
         }
+    }
+
+    validate() {
+        const { promise, resolve, reject } = Promise.withResolvers();
+        const request = indexedDB.open("words", this.version);
+        request.onsuccess = (event) => {
+            const db = event.target.result
+            const tx = db.transaction("pronunciations", 'readonly');
+            const store = tx.objectStore("pronunciations");
+            const query = store.count()
+            query.onsuccess = event => {
+                if (event.target.result === this.lexicon) resolve()
+                else reject(new Error(
+                    `The stored db has ${event.target.result} entries ` +
+                    `instead of the expected ${this.lexicon}`))
+            }
+        }
+        return promise
     }
 
     async clear() {
@@ -192,7 +230,7 @@ class Cursor extends Dictionary {
     localLookup(query) {
         const tx = this.#db.transaction("pronunciations", 'readonly');
         const store = tx.objectStore("pronunciations");
-        const request = store.get(query.toUpperCase())
+        const request = store.get(query.toLowerCase())
         return new Promise((resolve, reject) => {
             request.onsuccess = event =>
                 resolve(event.target.result?.pronunciation)

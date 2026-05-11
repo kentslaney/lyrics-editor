@@ -430,3 +430,34 @@ body {
     margin-top: var(--fold-height);
 }
 
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #0d1117;
+        color: #f0f6fc;
+    }
+
+    .splittable.split .fold {
+        background: #444;
+    }
+
+    .unclear > span > span::before {
+        color: #888;
+    }
+
+    .foreground {
+        color: #f0f6fc;
+    }
+
+    #page-status a {
+        color: #888;
+    }
+
+    .double-spaced {
+        border-color: #fff;
+    }
+
+    .splittable.split .fold::after {
+        background: #fff;
+    }
+}
+

@@ -34,7 +34,7 @@ class Dictionary {
         })
     }
 
-    async seq(query) {
+    seq(query) {
         return new Promise((resolve, reject) => {
             const words = query.split(" ")
             this.lookup(words).then(result => {
@@ -307,7 +307,7 @@ class Transient extends Dictionary {
     }
 
     async localLookup(query) {
-        return this.#kv[query.toUpperCase()]
+        return this.#kv[query.toLowerCase()]
     }
 }
 

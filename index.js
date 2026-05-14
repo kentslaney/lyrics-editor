@@ -735,13 +735,25 @@ class PrefixPair {
         this.parent = JSON.stringify(parent)
     }
 
-    apply(score, store) {}
+    apply(score, store) {
+        const child = this.node.children[this.vowel]
+        if (this.node.parentless) {
+        } else if (this.parent in store.sums[this.node.uniq]) {
+            score += store.sums[this.node.uniq][this.parent]
+        } else {
+            debugger
+        }
+        if (!(child.uniq in store.sums)) store.sums[child.uniq] = {}
+        store.sums[child.uniq][this.pair] = score
+        store.push(child)
+        return [score, this]
+    }
 }
 
 class VowelStart {
     constructor(node, child) {
         this.node = node
-        this.child = JSON.stringify(child)
+        this.child = child
     }
 
     apply(score, store) {}
@@ -777,10 +789,10 @@ class NodeHeap extends MaxMergedMapped {
 
 class SuffixWalk extends MaxMergedKV {
     constructor(tree) {
-        const uniq = tree.uniq
-        super({[uniq]: tree.outgoing()})
-        this.sums = {[uniq]: {}}
-        this.pending = {[uniq]: {}}
+        super({})
+        this.push(tree)
+        this.sums = {}
+        this.pending = {}
     }
 
     next() {
@@ -788,10 +800,16 @@ class SuffixWalk extends MaxMergedKV {
             const kv = this.pop()
             console.assert(kv.length === 3)
             const [uniq, score, value] = kv
-            const res = value.apply(uniq, score, this)
+            const res = value.apply(score, this)
             if (res !== undefined) return { done: false, value: res }
         }
+        debugger
         return { done: true, value: undefined }
+    }
+
+    push(x) {
+        const k = x.uniq
+        if (!(k in this.sources)) super.push(k, x.outgoing())
     }
 }
 
@@ -842,7 +860,7 @@ class Suffixes {
         const vowel = this.step(i)
         if (this.children[vowel] === undefined) {
             this.children[vowel] = new Suffixes(this.sim)
-                .init(this, i).debug(this.aligned[i])
+                .init(this, vowel).debug(this.aligned[i])
         }
         return this.children[vowel]
     }
@@ -1664,6 +1682,8 @@ var tree
 lcs("New York City gritty committee pity the fool").then(tree_ => {
     tree = tree_
     console.log(tree.repr())
+    for (let [score, i] of tree) console.log(
+        `${score.toFixed(2)} ${i.node.uniq} ${i.vowel} ${i.pair} ${i.parent}`)
 })
 
 if (isNode) {

@@ -52,7 +52,7 @@ class Dictionary {
         })
     }
 
-    parse(callback, progress = () => {}, persist = () => []) {
+    parse(callback, progress=() => {}, persist=() => []) {
         return async function(reader) {
             let prefix = "", existing = [], prev = "", total = 0
             const pump = async () => {
@@ -192,7 +192,7 @@ class Cursor extends Dictionary {
         })
     }
 
-    async load(progress = () => {}, storing = () => {}) {
+    async load(progress=() => {}, storing=() => {}) {
         const commits = [];
         console.info("populating pronunciation db")
         return fetch((await this.remoteAvailable) ? this.local : this.url)
@@ -656,13 +656,8 @@ class Ngram extends MaxHeapPeek {
         return [k, [this.mapping[v0], this.mapping[v1]].sort()]
     }
 
-    pop() {
-        return this.remap(...super.pop())
-    }
-
-    peek() {
-        return this.remap(...super.peek())
-    }
+    pop()  { return this.remap(...super.pop())  }
+    peek() { return this.remap(...super.peek()) }
 }
 
 class OverlayKV extends Ngram {
@@ -688,17 +683,19 @@ class MaxMergedKV {
     pop() {
         if (this.heap.empty) return this.heap.pop()
         const source = this.heap.peek()[1]
-        const [k, v] = this.sources[source].pop()
+        const kv = this.sources[source].pop()
+        console.assert(kv.length === 2)
         if (this.sources[source].empty) this.heap.pop()
         else this.heap.replace(this.sources[source].peek()[0])
-        return [source, k, v]
+        return [source, ...kv]
     }
 
     peek() {
         const source = this.heap.peek()[1]
         if (source === undefined) return [undefined, undefined, undefined]
-        const [k, v] = this.sources[source].peek()
-        return [source, k, v]
+        const kv = this.sources[source].peek()
+        console.assert(kv.length === 2)
+        return [source, ...kv]
     }
 
     hold() {
@@ -707,10 +704,14 @@ class MaxMergedKV {
         return this
     }
 
-    [Symbol.iterator]() {
-        return {
-            next: () => ({ done: this.heap.empty, value: this.pop() })
-        }
+    get empty() {
+        return this.heap.empty
+    }
+
+    push(source, heap) {
+        if (heap.empty) return
+        this.sources[source] = heap
+        this.heap.push(heap.peek()[0], source)
     }
 
     // debugging method
@@ -720,31 +721,79 @@ class MaxMergedKV {
     }
 }
 
-class NodeHeap extends MaxMergedKV {
-    constructor(node, sources) {
+class MaxMergedMapped extends MaxMergedKV {
+    remap(...res) { return res }
+    pop()  { return this.remap(...super.pop())  }
+    peek() { return this.remap(...super.peek()) }
+}
+
+class PrefixPair {
+    constructor(node, source, pair, parent) {
+        this.node = node
+        this.vowel = source
+        this.pair = JSON.stringify(pair)
+        this.parent = JSON.stringify(parent)
+    }
+
+    apply(score, store) {}
+}
+
+class VowelStart {
+    constructor(node, child) {
+        this.node = node
+        this.child = JSON.stringify(child)
+    }
+
+    apply(score, store) {}
+}
+
+class NonVowelEnd {
+    constructor(node, parent) {
+        this.node = node
+        this.parent = JSON.stringify(parent)
+    }
+
+    apply(score, store) {}
+}
+
+class NodeHeap extends MaxMergedMapped {
+    constructor(node, sources, exceptions=undefined) {
         super(sources)
         this.node = node
+        this.exceptions = exceptions === undefined ? {} : exceptions
     }
 
     remap(source, score, deref) {
-        if (source === undefined || source == -1)
-            return [source, score, deref, undefined]
+        if (source === undefined) return [undefined, undefined]
+        if (source in this.exceptions)
+            return [score, this.exceptions[source](this.node, deref)]
+        console.assert(deref.length === 2)
         const [v0, v1] = deref
         const refs = this.node.children[source].refs
-        return [source, score, deref, [refs[v0], refs[v1]]]
-    }
-
-    pop() {
-        return this.remap(...super.pop())
-    }
-
-    peek() {
-        return this.remap(...super.peek())
+        const res = [refs[v0], refs[v1]]
+        return [score, new PrefixPair(this.node, source, deref, res)]
     }
 }
 
-class VowelHeap extends NodeHeap {}
-class RootHeap extends NodeHeap {}
+class SuffixWalk extends MaxMergedKV {
+    constructor(tree) {
+        const uniq = tree.uniq
+        super({[uniq]: tree.outgoing()})
+        this.sums = {[uniq]: {}}
+        this.pending = {[uniq]: {}}
+    }
+
+    next() {
+        while (!this.heap.empty) {
+            const kv = this.pop()
+            console.assert(kv.length === 3)
+            const [uniq, score, value] = kv
+            const res = value.apply(uniq, score, this)
+            if (res !== undefined) return { done: false, value: res }
+        }
+        return { done: true, value: undefined }
+    }
+}
 
 // Having a max heap for each vowel’s deltas independent of its parent’s score
 //     isn’t the most efficient since the distance is fast to compute.
@@ -758,18 +807,22 @@ class Suffixes {
         this.refs = []
         this.cache = null
         this.root = this
-        this.depth = 0
+        this.path = []
     }
 
-    init(parent) {
+    init(parent, ref) {
         this.aligned = parent.aligned
         this.root = parent.root
-        this.depth = parent.depth + 1
+        this.path = [...parent.path, ref]
         return this
     }
 
     get parentless() {
         return this.root === this
+    }
+
+    get uniq() {
+        return JSON.stringify(this.path)
     }
 
     debug(info) {
@@ -784,12 +837,12 @@ class Suffixes {
     get(i) {
         if (i === this.aligned.length) {
             return this.children[this.sim.vowels.length] ||=
-                new Suffixes(this.sim).init(this).debug("$")
+                new Suffixes(this.sim).init(this, i).debug("$")
         }
         const vowel = this.step(i)
         if (this.children[vowel] === undefined) {
             this.children[vowel] = new Suffixes(this.sim)
-                .init(this).debug(this.aligned[i])
+                .init(this, i).debug(this.aligned[i])
         }
         return this.children[vowel]
     }
@@ -845,7 +898,7 @@ class Suffixes {
         let pre = ""
         if (!this.parentless) {
             pre = this.childless ? "\u2500" : "\u252C"
-            pre += this.comments + " "
+            pre += this.comments + " \u2190 "
             pre += this.flat().map(x => this.aligned[x].map(x =>
                 x.join("-")).join("_")).join(" ")
         }
@@ -862,7 +915,7 @@ class Suffixes {
                 .filter(x => x !== null))
     }
 
-    incoming(offset = null) {
+    incoming(offset=null) {
         const res = offset === null ? new Ngram(this.sim) :
             new OverlayKV(this.sim, offset)
         res.push(...this.consonants())
@@ -886,15 +939,20 @@ class Suffixes {
                     this.sim.vowels[x]?.[x])])
                 .filter(([k, v]) => k !== this.sim.vowels.length && !v.empty))
         if (this.parentless) {
-            // vowel children to be compared without root prefixes
             if (this.branching.length) res[-1] = new MaxHeapPeek()
             this.branching.forEach(x => res[-1].push(this.sim.vowels[x][x], x))
-            return new RootHeap(this, res)
+            return new NodeHeap(this, res, {
+                "-1": (...x) => new VowelStart(...x)})
         } else if (this.prefixes.length > 1) {
-            // prefixes compared without the final vowel node
             if (this.occupied.length) res[-1] = this.partials()
-            return new VowelHeap(this, res)
+            return new NodeHeap(this, res, {
+                "-1": (...x) => new NonVowelEnd(...x)})
         }
+    }
+
+    [Symbol.iterator]() {
+        console.assert(this.parentless)
+        return new SuffixWalk(this)
     }
 }
 
@@ -905,7 +963,7 @@ async function lcs(seq) {
 }
 
 class Edit {
-    constructor(iter0, iter1, n = undefined, m = undefined) {
+    constructor(iter0, iter1, n=undefined, m=undefined) {
         this.iter0 = iter0
         this.iter1 = iter1
         this.n = n === undefined ? iter0.length : n
@@ -1111,7 +1169,7 @@ function debounce(ms, f) {
 
 class DoubleSpaced {
     resize_debounce_ms = 100
-    constructor(cursor, wrapper, load = true) {
+    constructor(cursor, wrapper, load=true) {
         this.editor = new Editing(cursor)
         this.wrapper = wrapper
         this.foreground = this.wrapper.getElementsByClassName("foreground")[0]

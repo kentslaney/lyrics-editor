@@ -824,19 +824,17 @@ class Suffixes {
         this.prefixes = []
         this.refs = []
         this.cache = null
-        this.root = this
         this.path = []
     }
 
     init(parent, ref) {
         this.aligned = parent.aligned
-        this.root = parent.root
         this.path = [...parent.path, ref]
         return this
     }
 
     get parentless() {
-        return this.root === this
+        return this.path.length === 0
     }
 
     get uniq() {

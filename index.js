@@ -727,8 +727,24 @@ class MaxMergedMapped extends MaxMergedKV {
     peek() { return this.remap(...super.peek()) }
 }
 
-class PrefixPair {
+class SumPends {
+    apply(score, store) {
+        if (this.parent in store.sums[this.node.uniq]) {
+            store.pop()
+            return score + store.sums[this.node.uniq][this.parent]
+        } else {
+            const kv = store.heap.pop()
+            if (!(this.node.uniq in store.pending))
+                store.pending[this.node.uniq] = {}
+            store.pending[this.node.uniq][this.parent] = kv
+            return
+        }
+    }
+}
+
+class PrefixPair extends SumPends {
     constructor(node, source, pair, parent) {
+        super()
         this.node = node
         this.vowel = source
         this.pair = JSON.stringify(pair)
@@ -738,16 +754,11 @@ class PrefixPair {
     apply(score, store) {
         const child = this.node.children[this.vowel]
         if (this.node.parentless) {
-        } else if (this.parent in store.sums[this.node.uniq]) {
-            score += store.sums[this.node.uniq][this.parent]
+            store.pop()
         } else {
-            const kv = store.heap.pop()
-            if (!(this.node.uniq in store.pending))
-                store.pending[this.node.uniq] = {}
-            store.pending[this.node.uniq][this.parent] = kv
-            return
+            score = super.apply(score, store)
+            if (score === undefined) return
         }
-        store.pop()
         if (!(child.uniq in store.sums)) store.sums[child.uniq] = {}
         store.sums[child.uniq][this.pair] = score
         store.push(child)
@@ -771,14 +782,17 @@ class VowelStart {
     }
 }
 
-class NonVowelEnd {
+class NonVowelEnd extends SumPends {
     constructor(node, parent) {
+        super()
         this.node = node
         this.parent = JSON.stringify(parent)
     }
 
     apply(score, store) {
-        store.pop()
+        score = super.apply(score, store)
+        if (score === undefined) return
+        return [score, this]
     }
 }
 

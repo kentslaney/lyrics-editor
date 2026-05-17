@@ -771,14 +771,45 @@ class PrefixPair extends SumPends {
     }
 }
 
+class RootTrimmed {
+    constructor(node) {
+        this.node = node
+        console.assert(!node.parentless)
+        this.parentless = false
+        this.refs = node.refs
+    }
+
+    get uniq() {
+        const res = this.node.uniq
+        console.assert(res[0] === "[" && res[1] !== "]")
+        return "[-1," + res.slice(1)
+    }
+
+    get children() {
+        return new Proxy(this.node.children, {
+            get: (target, prop) => target[prop] && new RootTrimmed(target[prop])
+        })
+    }
+
+    outgoing() {
+        const res = this.node.outgoing()
+        res.node = new RootTrimmed(res.node)
+        return res
+    }
+}
+
 class VowelStart {
     constructor(node, child) {
-        this.node = node
-        this.child = child
+        this.node = new RootTrimmed(node.children[child])
     }
 
     apply(score, store) {
         store.pop()
+        store.sums[this.node.uniq] = new Proxy({}, {
+            has: (target, prop) => true,
+            get: (target, prop) => score
+        })
+        store.push(this.node)
     }
 }
 

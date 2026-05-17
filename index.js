@@ -741,11 +741,21 @@ class PrefixPair {
         } else if (this.parent in store.sums[this.node.uniq]) {
             score += store.sums[this.node.uniq][this.parent]
         } else {
-            debugger
+            const kv = store.heap.pop()
+            if (!(this.node.uniq in store.pending))
+                store.pending[this.node.uniq] = {}
+            store.pending[this.node.uniq][this.parent] = kv
+            return
         }
+        store.pop()
         if (!(child.uniq in store.sums)) store.sums[child.uniq] = {}
         store.sums[child.uniq][this.pair] = score
         store.push(child)
+        if (this.pair in (store.pending[child.uniq] ?? {})) {
+            const kv = store.pending[child.uniq][this.pair]
+            delete store.pending[child.uniq][this.pair]
+            store.heap.push(...kv)
+        }
         return [score, this]
     }
 }
@@ -756,7 +766,9 @@ class VowelStart {
         this.child = child
     }
 
-    apply(score, store) {}
+    apply(score, store) {
+        store.pop()
+    }
 }
 
 class NonVowelEnd {
@@ -765,7 +777,9 @@ class NonVowelEnd {
         this.parent = JSON.stringify(parent)
     }
 
-    apply(score, store) {}
+    apply(score, store) {
+        store.pop()
+    }
 }
 
 class NodeHeap extends MaxMergedMapped {
@@ -797,13 +811,12 @@ class SuffixWalk extends MaxMergedKV {
 
     next() {
         while (!this.heap.empty) {
-            const kv = this.pop()
+            const kv = this.peek()
             console.assert(kv.length === 3)
             const [uniq, score, value] = kv
             const res = value.apply(score, this)
             if (res !== undefined) return { done: false, value: res }
         }
-        debugger
         return { done: true, value: undefined }
     }
 
@@ -1681,7 +1694,7 @@ lcs("New York City gritty committee pity the fool").then(tree_ => {
     tree = tree_
     console.log(tree.repr())
     for (let [score, i] of tree) console.log(
-        `${score.toFixed(2)} ${i.node.uniq} ${i.vowel} ${i.pair} ${i.parent}`)
+        `${score.toFixed(1)} ${i.node.uniq} ${i.vowel} ${i.pair} ${i.parent}`)
 })
 
 if (isNode) {

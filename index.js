@@ -138,8 +138,8 @@ class Cursor extends Dictionary {
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result
-            db.deleteObjectStore("pronunciations")
-            db.deleteObjectStore("status")
+            for (let obj of db.objectStoreNames)
+                db.deleteObjectStore(obj)
 
             db.createObjectStore("pronunciations", { keyPath: 'word' });
             const store = db.createObjectStore("status", { keyPath: 'id' });
@@ -1734,14 +1734,6 @@ function storedBool(id, stateful, cls, init) {
     el.addEventListener("change", f)
 }
 
-var tree
-lcs("New York City gritty committee pity the fool").then(tree_ => {
-    tree = tree_
-    console.log(tree.repr())
-    for (let [score, i] of tree) console.log(
-        `${score.toFixed(1)} ${i.node.uniq} ${i.vowel} ${i.pair} ${i.parent}`)
-})
-
 if (isNode) {
     compare("battery", "battle me")
     compare("orange", "door hinge")
@@ -1756,6 +1748,10 @@ if (isNode) {
         console.log(tree.repr())
     })
     */
+
+    lcs("New York City gritty committee pity the fool").then(tree => {
+        console.log(tree.repr())
+    })
 } else {
     window.addEventListener("load", async function() {
         const pre = document.getElementsByClassName("double-spaced")[0]

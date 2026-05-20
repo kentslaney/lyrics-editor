@@ -156,6 +156,7 @@ class Cursor extends Dictionary {
                 const ws = await this.remoteAvailable
                 if (res || ws) this.status(res)
                 done(res)
+                // TODO: this.validate for user-initiated db refresh
             }).bind(this)
         }
     }
@@ -311,7 +312,22 @@ class Transient extends Dictionary {
     }
 }
 
-const dict = isNode ? new Transient() : new Cursor()
+class Overlaid extends Cursor {
+    constructor() {
+        super()
+        this.model = new G2p()
+    }
+
+    async localLookup(query) {
+        const stored = await super.localLookup(query)
+        if (stored !== undefined) return stored
+        await this.model.loading
+        const inference = await this.model.enqueue(query)
+        return inference.filter(x => x.length > 0)
+    }
+}
+
+const dict = isNode ? new Transient() : new Overlaid()
 
 function cumsum(arr) {
     let total = 0

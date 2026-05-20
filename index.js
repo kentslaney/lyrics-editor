@@ -1,3 +1,22 @@
+/**
+ * Lyrics Editor Core Engine
+ * 
+ * Provides phoneme extraction, phonetic similarity calculation, rhyme search,
+ * and double-spaced interactive editing interfaces.
+ * 
+ * Key Components:
+ * 1. Dictionary & Storage:
+ *    - Uses CMUDict for English pronunciations.
+ *    - IndexedDB (Cursor class) in browser, and filesystem (Transient class) in Node.js.
+ * 
+ * 2. Phoneme Rhyme Algorithm:
+ *    - Similarities: Computes rhyme similarity based on ISMIR 2009 research paper.
+ *    - MaxHeap: Priority queues to merge/find best phonetic prefix/suffix branches.
+ *    - Suffixes: A suffix tree implementation for finding matching phonetic substrings (LCS).
+ * 
+ * 3. Text Editor Overlay:
+ *    - DoubleSpaced: Coordinates overlay and inputs to sync syllables/meters below lyrics.
+ */
 "use strict"
 
 const isNode = typeof window === "undefined"
@@ -19,6 +38,11 @@ const retrieve = !isNode ? fetch : async function(uri) {
     }
 }
 
+/**
+ * Abstract Dictionary class representing the CMU Pronouncing Dictionary.
+ * Handles downloading, parsing, and looking up phonemes.
+ * Subclassed by Cursor (browser-side with IndexedDB caching) and Transient (Node.js/in-memory).
+ */
 class Dictionary {
     version = 2
     url = (
@@ -70,6 +94,7 @@ class Dictionary {
                     const post = line.slice(pre.length)
                     const [word, version] = (pre.endsWith(")") ?
                         pre.slice(0, -1).split("(") : [pre, "0"])
+                    // Check if we encountered a new word, flush the previous word's entries
                     if (word !== prev) {
                         if (prev) {
                             callback(prev, existing, ...args)
@@ -78,6 +103,7 @@ class Dictionary {
                         }
                         prev = word
                     }
+                    // Accumulate all phoneme representations for the current word
                     existing.push(post.trim())
                     line = next
                 }
@@ -124,6 +150,10 @@ class Dictionary {
     }
 }
 
+/**
+ * Browser-only implementation of Dictionary that utilizes IndexedDB for local persistence.
+ * Leverages WebSockets for remote lookups if local DB is not yet populated.
+ */
 class Cursor extends Dictionary {
     #db;
     constructor() {
@@ -272,6 +302,10 @@ class Cursor extends Dictionary {
     }
 }
 
+/**
+ * Node.js (or fallback) implementation of Dictionary.
+ * Keeps dictionary in-memory using a plain object hashmap.
+ */
 class Transient extends Dictionary {
     constructor() {
         super()
@@ -319,6 +353,11 @@ function cumsum(arr) {
 }
 
 // https://ismir2009.ismir.net/proceedings/OS8-1.pdf
+/**
+ * Phoneme similarities database and rhyme scoring engine based on:
+ * https://ismir2009.ismir.net/proceedings/OS8-1.pdf
+ * Contains vowel/consonant matrices and methods for alignment and rhyme calculations.
+ */
 class Similarities {
     constructor() {
         this.load = retrieve("OS8-1.json").then(r => r.json()).then((res => {
@@ -413,6 +452,10 @@ class Similarities {
         })
     }
 
+    /**
+     * Computes the dynamic programming grid for the optimal alignment path
+     * between two syllable codas, incorporating consonant insertion, deletion, and substitution.
+     */
     paths(coda0, coda1, rev=false) {
         if (coda0.length == 0 && coda1.length == 0) return [[0]]
         let skip0 = this.skips(coda0, rev), skip1 = this.skips(coda1, rev);
@@ -423,8 +466,11 @@ class Similarities {
             for (let j = 0; j <= coda1.length; j++) {
                 if (i == 0 && j == 0) continue
                 dp[i][j] = Math.max(
+                    // Insertion in coda0
                     i == 0 ? -Infinity : dp[i - 1][j] + skip0[i - 1],
+                    // Insertion in coda1
                     j == 0 ? -Infinity : dp[i][j - 1] + skip1[j - 1],
+                    // Match / substitution
                     i == 0 || j == 0 ? -Infinity : dp[i - 1][j - 1] +
                         (this.lookup(coda0[i - 1], coda1[j - 1])))
             }
@@ -491,6 +537,9 @@ function compare(query0, query1) {
     })
 }
 
+/**
+ * Generic binary MaxHeap implementation for prioritized elements.
+ */
 class MaxHeap {
     constructor() {
         this.arr = []
@@ -875,6 +924,10 @@ class SuffixWalk extends MaxMergedKV {
 //     isn’t the most efficient since the distance is fast to compute.
 // It maybe scales better to KNN for bio applications but really it's just being
 //     done this way for convenience's sake.
+/**
+ * Suffix tree representing aligned syllable sequences. Used to compute
+ * Longest Common Subsequences (LCS) and find rhyme structures.
+ */
 class Suffixes {
     constructor(sim) {
         this.sim = sim
@@ -1036,6 +1089,10 @@ async function lcs(seq) {
     return new Suffixes(phonemes).build(bar)
 }
 
+/**
+ * Edit distance (Levenshtein) and alignment engine.
+ * Computes shortest edit path between two sequences and tracks additions/deletions.
+ */
 class Edit {
     constructor(iter0, iter1, n=undefined, m=undefined) {
         this.iter0 = iter0
@@ -1082,16 +1139,23 @@ class Edit {
         return this._path
     }
 
-    // n shift is lowest bit, m shift is next
+    /**
+     * Recursively computes and memoizes the edit distance grid.
+     * Tracks optimal paths to rebuild the exact sequence of edit operations.
+     * Returns [distance, step_type] where step_type encodes the direction:
+     * 0 = no change, 1 = deletion (bit 1), 2 = insertion (bit 2), 3 = substitution
+     */
     loader(n, m) {
         if (n === 0) return [m, 2];
         if (m === 0) return [n, 1];
         if (this.dp[n][m] !== null) return this.dp[n][m];
+        // Characters match - diagonal transition with 0 cost
         if (this.iter0[n - 1] === this.iter1[m - 1]) {
             let prev = this.dp[n - 1][m - 1]
             if (prev === null) prev = this.loader(n - 1, m - 1)
             return this.dp[n][m] = [prev[0], 0]
         }
+        // Explore deletions, insertions, and substitutions
         let options = []
         for (let i = 1; i < 4; i++) {
             const j = n - (i & 1), k = m - ((i & 2) >> 1)
@@ -1100,7 +1164,7 @@ class Edit {
             options.push(prev[0] + 1)
         }
 
-        // min options
+        // Return transition with minimal cost
         if (options[0] <= options[1] && options[0] <= options[2])
             return this.dp[n][m] = [options[0], 1];
         if (options[1] <= options[0] && options[1] <= options[2])
@@ -1126,6 +1190,11 @@ class Edit {
     }
 }
 
+/**
+ * Backing model/controller for a text value being edited.
+ * Splits text into words, maintains their phonemes, handles versions/manual meters,
+ * and maintains memoized properties like separators, meter, and pronunciations.
+ */
 class Editing {
     value = ""
     words = []
@@ -1241,6 +1310,11 @@ function debounce(ms, f) {
     }
 }
 
+/**
+ * Editor overlay controller that coordinates a textarea (foreground)
+ * and an overlay (background/gutter) to present multi-line, double-spaced
+ * lyrics with syllable meters and pronunciations/suggestions.
+ */
 class DoubleSpaced {
     resize_debounce_ms = 100
     constructor(cursor, wrapper, load=true) {

@@ -1044,6 +1044,10 @@ class Suffixes {
         console.assert(this.parentless)
         return new SuffixWalk(this)
     }
+
+    sorted() {
+        return [...this].toSorted((a, b) => b[0] - a[0])
+    }
 }
 
 async function lcs(seq) {

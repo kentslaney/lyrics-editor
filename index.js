@@ -1015,7 +1015,9 @@ class Suffixes {
 
     indices() {
         console.assert(this.parentless)
-        const digits = (this.prefixes.slice(-1)[0] + "").length
+        const last = this.aligned.length - 1
+        const postfix = this.prefix(last)
+        const digits = (last + "").length
         const prefixWidth = Math.max(
             ...this.prefixes.map((x => this.prefix(x).length).bind(this)))
         return this.prefixes.map(x => {
@@ -1023,7 +1025,8 @@ class Suffixes {
             return " ".repeat(digits - (x + "").length) + x + "\t" +
                 " ".repeat(prefixWidth - prefix.length) + prefix + "\t" +
                 this.aligned[x + 1]
-        }).join("\n")
+        }).join("\n") + "\n" + last + "\t" +
+            " ".repeat(prefixWidth - postfix.length) + postfix
     }
 
     flat() {

@@ -762,9 +762,11 @@ class SumPends {
     }
 
     comparing() {
-        const [lo, hi] = this.rooted.map(x => x + this.offset)
-        const syllables = this.node.path.length * 2 - this.node.offset
-        return [[lo - syllables, lo], [hi - syllables, hi]]
+        const [lo, hi] = this.rooted
+        const syllables = this.node.path.length * 2 - this.node.offset - 2
+        return [
+            [lo - syllables, lo + this.offset],
+            [hi - syllables, hi + this.offset]]
     }
 
     refine() {

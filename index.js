@@ -758,7 +758,7 @@ class SumPends {
     }
 
     refine() {
-        debugger
+        debugger // TODO
     }
 }
 
@@ -788,6 +788,14 @@ class PrefixPair extends SumPends {
             store.heap.push(...kv)
         }
         return [score, this]
+    }
+
+    toString() {
+        return `vowel ${this.vowel} ${this.node.comments}\n` +
+            `prefixes ${this.pair} == `+
+                `parents' ${this.parent} == `+
+                `${this.node.prefixes} aligned (evens)\n` +
+            `uniq ${this.node.uniq} `
     }
 }
 
@@ -850,6 +858,12 @@ class NonVowelEnd extends SumPends {
         score = super.apply(score, store)
         if (score === undefined) return
         return [score, this]
+    }
+
+    toString() {
+        return `prefixes ${this.parent} == `+
+                `${this.node.prefixes} aligned (evens)\n` +
+            `uniq ${this.node.uniq} `
     }
 }
 
@@ -994,7 +1008,7 @@ class Suffixes {
             .map(x => this.children[x].flat()).flat().map(x => x - 2)
     }
 
-    repr() {
+    toString() {
         let pre = ""
         if (!this.parentless) {
             pre = this.childless ? "\u2500" : "\u252C"
@@ -1002,7 +1016,7 @@ class Suffixes {
             pre += this.flat().map(x => this.aligned[x].map(x =>
                 x.join("-")).join("_")).join(" ")
         }
-        const children = this.occupied.map(x => this.children[x].repr())
+        const children = this.occupied.map(x => this.children[x].toString())
         return pre + (children.length > 1 ? "\n" : "") + children.slice(0, -1)
             .map(x => "\u251C" + x.replace(/\n/g, "\n\u2502")).join("\n") +
             (children.length ? "\n\u2514" + children
@@ -1077,7 +1091,7 @@ class Edit {
         })
     }
 
-    get repr() {
+    toString() {
         const directions = this.dp.slice(1).map(x => x.slice(1).map(y => {
             switch (y && y[1]) {
                 case null: return " ";
@@ -1762,8 +1776,15 @@ function storedBool(id, stateful, cls, init) {
     el.addEventListener("change", f)
 }
 
-lcs("New York City gritty committee pity the fool").then(tree => {
-    console.log(tree.sorted()[2][1].refine())
+const phonePhrase = "New York City gritty committee pity the fool"
+lcs(phonePhrase).then(tree => {
+    console.log("" + phonePhrase + tree)
+    const ordered = tree.sorted()
+    for (let i = 0; i < 5; i++) {
+        const [score, summable] = ordered[i]
+        console.log(score.toFixed(1), summable + "\n", summable)
+    }
+    console.log(ordered[2][1].refine())
 })
 
 if (isNode) {
@@ -1777,7 +1798,7 @@ if (isNode) {
         res = res.replace(/[-_]/g, " ").replace(/[,\?]/g, "")
         return res.replace(/\n/g, " ")
     }).then(lcs).then(tree => {
-        console.log(tree.repr())
+        console.log(tree.toString()())
     })
     */
 } else {

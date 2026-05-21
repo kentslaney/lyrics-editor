@@ -757,6 +757,10 @@ class SumPends {
         }
     }
 
+    get rooted() {
+        return this.ref.map(x => this.node.prefixes[x])
+    }
+
     refine() {
         debugger // TODO
     }
@@ -767,6 +771,7 @@ class PrefixPair extends SumPends {
         super()
         this.node = node
         this.vowel = source
+        this.ref = pair
         this.pair = JSON.stringify(pair)
         this.parent = JSON.stringify(parent)
     }
@@ -794,7 +799,7 @@ class PrefixPair extends SumPends {
         return `vowel ${this.vowel} ${this.node.comments}\n` +
             `prefixes ${this.pair} == `+
                 `parents' ${this.parent} == `+
-                `${this.node.prefixes} aligned (evens)\n` +
+                `${JSON.stringify(this.rooted)} aligned (evens)\n` +
             `uniq ${this.node.uniq} `
     }
 }
@@ -851,6 +856,7 @@ class NonVowelEnd extends SumPends {
     constructor(node, parent) {
         super()
         this.node = node
+        this.ref = parent
         this.parent = JSON.stringify(parent)
     }
 
@@ -862,7 +868,7 @@ class NonVowelEnd extends SumPends {
 
     toString() {
         return `prefixes ${this.parent} == `+
-                `${this.node.prefixes} aligned (evens)\n` +
+                `${JSON.stringify(this.rooted)} aligned (evens)\n` +
             `uniq ${this.node.uniq} `
     }
 }

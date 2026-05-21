@@ -879,11 +879,6 @@ class NonVowelEnd extends SumPends {
         return [score, this]
     }
 
-    comparing() {
-        const [[ll, lh], [hl, hh]] = super.comparing()
-        return [[ll, lh - 1], [hl, hh - 1]]
-    }
-
     toString() {
         return `prefixes ${this.parent} == `+
                 `${JSON.stringify(this.rooted)} aligned (evens)\n` +

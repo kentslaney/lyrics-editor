@@ -761,12 +761,20 @@ class SumPends {
         return this.ref.map(x => this.node.prefixes[x])
     }
 
+    comparing() {
+        const [lo, hi] = this.rooted.map(x => x + this.offset)
+        const syllables = this.node.path.length * 2 - this.node.offset
+        return [[lo - syllables, lo], [hi - syllables, hi]]
+    }
+
     refine() {
-        debugger // TODO
+        // debugger // TODO
     }
 }
 
 class PrefixPair extends SumPends {
+    offset = 2
+
     constructor(node, source, pair, parent) {
         super()
         this.node = node
@@ -800,11 +808,14 @@ class PrefixPair extends SumPends {
             `prefixes ${this.pair} == `+
                 `parents' ${this.parent} == `+
                 `${JSON.stringify(this.rooted)} aligned (evens)\n` +
-            `uniq ${this.node.uniq}`
+            `uniq ${this.node.uniq}\n\t` +
+            this.comparing().map(JSON.stringify).join("\n\t")
     }
 }
 
 class RootTrimmed {
+    offset = 1
+
     constructor(node) {
         this.node = node
         console.assert(!node.parentless)
@@ -853,6 +864,8 @@ class VowelStart {
 }
 
 class NonVowelEnd extends SumPends {
+    offset = 1
+
     constructor(node, parent) {
         super()
         this.node = node
@@ -866,10 +879,16 @@ class NonVowelEnd extends SumPends {
         return [score, this]
     }
 
+    comparing() {
+        const [[ll, lh], [hl, hh]] = super.comparing()
+        return [[ll, lh - 1], [hl, hh - 1]]
+    }
+
     toString() {
         return `prefixes ${this.parent} == `+
                 `${JSON.stringify(this.rooted)} aligned (evens)\n` +
-            `uniq ${this.node.uniq}`
+            `uniq ${this.node.uniq}\n\t` +
+            this.comparing().map(JSON.stringify).join("\n\t")
     }
 }
 
@@ -922,6 +941,8 @@ class SuffixWalk extends MaxMergedKV {
 // It maybe scales better to KNN for bio applications but really it's just being
 //     done this way for convenience's sake.
 class Suffixes {
+    offset = 0
+
     constructor(sim) {
         this.sim = sim
         this.children = [...Array(sim.vowels.length + 1)]

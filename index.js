@@ -769,6 +769,27 @@ class SumPends {
             [hi - syllables, hi + this.offset]]
     }
 
+    debug() {
+        const [[ll, lh], [hl, hh]] = this.comparing(), res = ["", ""]
+        for (let i = ll, j = hl; i < lh; i++, j++) {
+            if ((i & 1) === 0) {
+                const lo = this.node.prefix(i), hi = this.node.prefix(j)
+                const width = Math.max(lo.length, hi.length)
+                res[0] += lo + " ".repeat(width - lo.length + 1)
+                res[1] += hi + " ".repeat(width - hi.length + 1)
+            } else {
+                res[0] += this.node.aligned[i] + " "
+                res[1] += this.node.aligned[j] + " "
+            }
+        }
+        const width = (Math.max(ll, lh, hl, hh) + "").length
+        return "" +
+            `\t[${" ".repeat(width - (ll + "").length)}${ll} ` +
+                `${res[0]}${" ".repeat(width - (lh + "").length)}${lh})\n` +
+            `\t[${" ".repeat(width - (hl + "").length)}${hl} ` +
+                `${res[1]}${" ".repeat(width - (hh + "").length)}${hh})`
+    }
+
     refine() {
         // debugger // TODO
     }
@@ -810,8 +831,7 @@ class PrefixPair extends SumPends {
             `prefixes ${this.pair} == `+
                 `parents' ${this.parent} == `+
                 `${JSON.stringify(this.rooted)} aligned (evens)\n` +
-            `uniq ${this.node.uniq}\n\t` +
-            this.comparing().map(JSON.stringify).join("\n\t")
+            `uniq ${this.node.uniq}\n${this.debug()}`
     }
 }
 
@@ -884,8 +904,7 @@ class NonVowelEnd extends SumPends {
     toString() {
         return `prefixes ${this.parent} == `+
                 `${JSON.stringify(this.rooted)} aligned (evens)\n` +
-            `uniq ${this.node.uniq}\n\t` +
-            this.comparing().map(JSON.stringify).join("\n\t")
+            `uniq ${this.node.uniq}\n${this.debug()}`
     }
 }
 

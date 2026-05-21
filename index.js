@@ -756,6 +756,10 @@ class SumPends {
             return
         }
     }
+
+    refine() {
+        debugger
+    }
 }
 
 class PrefixPair extends SumPends {
@@ -791,8 +795,14 @@ class RootTrimmed {
     constructor(node) {
         this.node = node
         console.assert(!node.parentless)
-        this.parentless = false
-        this.refs = node.refs
+    }
+
+    static de(node) { // Spanish "of" for namespace reasons
+        return new Proxy(new RootTrimmed(node), {
+            get(obj, prop, receiver) {
+                return Reflect.get(prop in obj ? obj : obj.node, prop, receiver)
+            }
+        })
     }
 
     get uniq() {
@@ -803,20 +813,20 @@ class RootTrimmed {
 
     get children() {
         return new Proxy(this.node.children, {
-            get: (target, prop) => target[prop] && new RootTrimmed(target[prop])
+            get: (target, prop) => target[prop] && RootTrimmed.de(target[prop])
         })
     }
 
     outgoing() {
         const res = this.node.outgoing()
-        res.node = new RootTrimmed(res.node)
+        res.node = RootTrimmed.de(res.node)
         return res
     }
 }
 
 class VowelStart {
     constructor(node, child) {
-        this.node = new RootTrimmed(node.children[child])
+        this.node = RootTrimmed.de(node.children[child])
     }
 
     apply(score, store) {
@@ -1752,6 +1762,10 @@ function storedBool(id, stateful, cls, init) {
     el.addEventListener("change", f)
 }
 
+lcs("New York City gritty committee pity the fool").then(tree => {
+    console.log(tree.sorted()[2][1].refine())
+})
+
 if (isNode) {
     compare("battery", "battle me")
     compare("orange", "door hinge")
@@ -1766,10 +1780,6 @@ if (isNode) {
         console.log(tree.repr())
     })
     */
-
-    lcs("New York City gritty committee pity the fool").then(tree => {
-        console.log(tree.repr())
-    })
 } else {
     window.addEventListener("load", async function() {
         const pre = document.getElementsByClassName("double-spaced")[0]

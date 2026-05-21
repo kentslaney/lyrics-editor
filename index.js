@@ -800,7 +800,7 @@ class PrefixPair extends SumPends {
             `prefixes ${this.pair} == `+
                 `parents' ${this.parent} == `+
                 `${JSON.stringify(this.rooted)} aligned (evens)\n` +
-            `uniq ${this.node.uniq} `
+            `uniq ${this.node.uniq}`
     }
 }
 
@@ -869,7 +869,7 @@ class NonVowelEnd extends SumPends {
     toString() {
         return `prefixes ${this.parent} == `+
                 `${JSON.stringify(this.rooted)} aligned (evens)\n` +
-            `uniq ${this.node.uniq} `
+            `uniq ${this.node.uniq}`
     }
 }
 
@@ -1007,6 +1007,23 @@ class Suffixes {
 
     get childless() {
         return this.occupied.length === 0
+    }
+
+    prefix(rooted) {
+        return this.aligned[rooted].map(x => x.join("-")).join("_")
+    }
+
+    indices() {
+        console.assert(this.parentless)
+        const digits = (this.prefixes.slice(-1)[0] + "").length
+        const prefixWidth = Math.max(
+            ...this.prefixes.map((x => this.prefix(x).length).bind(this)))
+        return this.prefixes.map(x => {
+            const prefix = this.prefix(x)
+            return " ".repeat(digits - (x + "").length) + x + "\t" +
+                " ".repeat(prefixWidth - prefix.length) + prefix + "\t" +
+                this.aligned[x + 1]
+        }).join("\n")
     }
 
     flat() {
@@ -1785,6 +1802,7 @@ function storedBool(id, stateful, cls, init) {
 const phonePhrase = "New York City gritty committee pity the fool"
 lcs(phonePhrase).then(tree => {
     console.log("" + phonePhrase + tree)
+    console.log(tree.indices())
     const ordered = tree.sorted()
     for (let i = 0; i < 5; i++) {
         const [score, summable] = ordered[i]

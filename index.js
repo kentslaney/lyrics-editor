@@ -464,13 +464,10 @@ class Similarities {
             dp, [...Array(dp.length).keys()], [...Array(dp[0].length).keys()])
     }
 
-    spaced(codas0, codas1, rev=false) {
-        const dir = rev ? x => x.reverse() : x => x
-        const dp = this.paths(dir(codas0.flat()), dir(codas1.flat()), rev)
-        return [this.match(dp), this.match(
-            dp,
-            cumsum(dir(codas0.map(x => x.length))),
-            cumsum(dir(codas1.map(x => x.length))))]
+    spaced(codas, main) {
+        const lengths = codas.map(x => [0].concat(cumsum(x.map(y => y.length))))
+            .map((x, i) => [x.slice(0, main[i] + 1), x.slice(main[i] + 1)])
+        debugger
     }
 
     rhyme(seq0, seq1) {
@@ -790,15 +787,7 @@ class SumPends {
                 `${res[1]}${" ".repeat(width - (hh + "").length)}${hh})`
     }
 
-    /**
-     * Takes the aligned phonemes being compared and finds the exact similarity
-     * score through `this.node.sim`. If the consonants at the end of the ranges
-     * contain a word break, uses `spaced` to allow the matching to stop either
-     * there or at the cutoff for the excluded vowel.
-     */
     refine() {
-        // may need additional changes to spaced to require the main comparison
-        // while enabling bidirectional edge alignments
         const [[ll, lh], [hl, hh]] = this.comparing()
         const lo = ll & 1 ^ 1, hi = hh & 1
         const cutoff = [
@@ -806,12 +795,13 @@ class SumPends {
             this.node.aligned.slice(hl + lo, hh - hi)]
         const central = cutoff.map(x => x.map((y, i) =>
             i & 1 ? y.flat() : [y.replace(/[012]/, "")]).flat())
-        let res = central.map(x => [x])
+        let res = central.map(x => [x]), index = [0, 0]
         if (lo) {
             const before = [this.node.aligned[ll], this.node.aligned[hl]]
             res = before.map((x, i) =>
                 (x.length == 2 && x[0].length ? x.slice(0, 1) : []).concat(
                     [x.slice(-1)[0].concat(...res[i])]))
+            index = res.map(x => x.length - 1)
         }
         if (hi) {
             const after = [this.node.aligned[lh - 1], this.node.aligned[hh - 1]]
@@ -819,7 +809,7 @@ class SumPends {
                 [...res[i], ...x[0]].concat(
                     x.length == 2 && x[1].length ? x.slice(-1) : []))
         }
-        console.log(JSON.stringify(res))
+        return this.node.sim.spaced(res, index)
     }
 }
 
@@ -1872,7 +1862,7 @@ lcs(phonePhrase).then(tree => {
     console.log("" + phonePhrase + tree)
     console.log(tree.indices())
     const ordered = tree.sorted()
-    for (const i of [24, 10, 66]) {
+    for (const i of [66, 24, 10]) {
         const [score, summable] = ordered[i]
         console.log(score.toFixed(1), summable + "\n", summable)
         console.log(ordered[i][1].refine())

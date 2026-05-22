@@ -790,8 +790,36 @@ class SumPends {
                 `${res[1]}${" ".repeat(width - (hh + "").length)}${hh})`
     }
 
+    /**
+     * Takes the aligned phonemes being compared and finds the exact similarity
+     * score through `this.node.sim`. If the consonants at the end of the ranges
+     * contain a word break, uses `spaced` to allow the matching to stop either
+     * there or at the cutoff for the excluded vowel.
+     */
     refine() {
-        // debugger // TODO
+        // may need additional changes to spaced to require the main comparison
+        // while enabling bidirectional edge alignments
+        const [[ll, lh], [hl, hh]] = this.comparing()
+        const lo = ll & 1 ^ 1, hi = hh & 1
+        const cutoff = [
+            this.node.aligned.slice(ll + lo, lh - hi),
+            this.node.aligned.slice(hl + lo, hh - hi)]
+        const central = cutoff.map(x => x.map((y, i) =>
+            i & 1 ? y.flat() : [y.replace(/[012]/, "")]).flat())
+        let res = central.map(x => [x])
+        if (lo) {
+            const before = [this.node.aligned[ll], this.node.aligned[hl]]
+            res = before.map((x, i) =>
+                (x.length == 2 && x[0].length ? x.slice(0, 1) : []).concat(
+                    [x.slice(-1)[0].concat(...res[i])]))
+        }
+        if (hi) {
+            const after = [this.node.aligned[lh - 1], this.node.aligned[hh - 1]]
+            res = after.map((x, i) =>
+                [...res[i], ...x[0]].concat(
+                    x.length == 2 && x[1].length ? x.slice(-1) : []))
+        }
+        console.log(JSON.stringify(res))
     }
 }
 
@@ -1844,11 +1872,11 @@ lcs(phonePhrase).then(tree => {
     console.log("" + phonePhrase + tree)
     console.log(tree.indices())
     const ordered = tree.sorted()
-    for (let i = 0; i < 5; i++) {
+    for (const i of [24, 10, 66]) {
         const [score, summable] = ordered[i]
         console.log(score.toFixed(1), summable + "\n", summable)
+        console.log(ordered[i][1].refine())
     }
-    console.log(ordered[2][1].refine())
 })
 
 if (isNode) {

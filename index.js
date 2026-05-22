@@ -560,8 +560,14 @@ class Similarities {
     /**
      * Measures similarities over multiple words with dynamic boundaries.
      * 
-     * Example Input: spaced([["T"]], [["L", "M"]], true)
-     * Example Result: [-1, -1]
+     * Example Input 1: spaced([["T"]], [["L"], ["M"]])
+     * Example Result 1: [-0.65, 0.4]
+     * 
+     * Example Input 2: spaced([["T"]], [["L", "M"]])
+     * Example Result 2: [-0.65, -0.65]
+     * 
+     * Example Input 3: spaced([["AW","T"],["DH","AH"],["B","L","UW"]], [["P","AW","N","D"],["AH","V"],["F","UW","D"]])
+     * Example Result 3: [0.8666666666666667, 0.8833333333333333]
      */
     spaced(codas0, codas1, rev=false) {
         const dir = rev ? x => x.reverse() : x => x

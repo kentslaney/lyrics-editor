@@ -336,6 +336,16 @@ function cumsum(arr) {
 
 // https://ismir2009.ismir.net/proceedings/OS8-1.pdf
 class Similarities {
+    /**
+     * Reconstructs the phonetic similarity environment from the OS8-1 JSON profile.
+     * Transposes lower-triangular matrices for vowels and consonants into dense matrices
+     * and maps CMUDict phonemes to their group classifications and matrix indices.
+     * 
+     * Example Trace (Initialization):
+     * - Maps vowel "IY" to: ["vowels", 10]
+     * - Maps vowel "IH" to: ["vowels", 9]
+     * - Maps consonant "T" to: ["consonants", 2]
+     */
     constructor() {
         this.load = retrieve("OS8-1.json").then(r => r.json()).then((res => {
             for (const key of Object.keys(res)) {
@@ -365,6 +375,12 @@ class Similarities {
         }).bind(this))
     }
 
+    /**
+     * Ensures OS8-1 database resource initialization completes prior to querying metrics.
+     * 
+     * Example Result:
+     * - Resolves successfully when json resources are ready.
+     */
     validate() {
         const done = {}
         return Promise.race([this.load, done]).then(async (first) => {
@@ -372,11 +388,39 @@ class Similarities {
         })
     }
 
+    /**
+     * Looks up direct matrix entry mapping index0 and index1 to retrieve standard similarity.
+     * Handles symmetric matrix coordinate redirection internally (sorts indices asc).
+     * 
+     * Example Input:
+     * - type: "vowels"
+     * - index0: 10 ("IY" index)
+     * - index1: 9 ("IH" index)
+     * 
+     * Example Result:
+     * - -0.9
+     */
     get(type, index0, index1) {
         const [lo, hi] = [index0, index1].toSorted((a, b) => a - b)
         return this[type][hi][lo]
     }
 
+    /**
+     * Resolves individual or comprehensive similarity lists. If second phoneme is omitted,
+     * returns dictionary mapping all candidate class matches to similarity score.
+     * 
+     * Example Input 1: lookup("IY", "IY")
+     * Example Result 1: 2.4
+     * 
+     * Example Input 2: lookup("IY", "IH")
+     * Example Result 2: -0.9
+     * 
+     * Example Input 3: lookup("IY")
+     * Example Result 3: {"AA":-3.9, "AE":-4.3, "AH":-3, "AO":-6.3, "AW":-5.7, "AY":-3.2, "EH":-2.1, "ER":-5.5, "EY":-2.7, "IH":-0.9, "IY":2.4, "OW":-4.4, "OY":-4.2, "UH":-5.8, "UW":-6.4}
+     * 
+     * Example Input 4: lookup("T", "IY")
+     * Example Result 4: null (vowel vs consonant)
+     */
     lookup(term0, term1) {
         this.validate()
         const [type0, index0] = this.group[term0]
@@ -392,6 +436,13 @@ class Similarities {
         }
     }
 
+    /**
+     * Orders matching pairs between two index sets by descending similarity score.
+     * Can restrict to lower-triangular grid (lu=true) and include diagonal (diag=true).
+     * 
+     * Example Input: order("vowels", [0, 1], [0, 1], true, true)
+     * Example Result: [[0, 0, 2.3], [1, 1, 2.1], [1, 0, -3.3]]
+     */
     order(type, indices0, indices1, lu=true, diag=true) {
         indices0 = indices0 === undefined ?
             [...Array(this[type].length).keys()] : indices0
@@ -402,6 +453,16 @@ class Similarities {
             .flat().toSorted(([,,a], [,,b]) => b - a)
     }
 
+    /**
+     * Formats plain-text pronunciation sequences into alternating syllabic blocks:
+     * [ [coda/onset], vowel (nucleus), [coda/onset], vowel (nucleus), ... ]
+     * 
+     * Example Input 1: ["B AE1 T ER0 IY0"] (pronunciation of "battery")
+     * Example Result 1: [[["B"]], "AE", [["T"]], "ER", [[]], "IY", [[]]]
+     * 
+     * Example Input 2: ["B AE1 T AH0 L", "M IY1"] (pronunciation of "battle me")
+     * Example Result 2: [[["B"]], "AE", [["T"]], "AH", [["L"], ["M"]], "IY", [[]]]
+     */
     align(seq) {
         // TODO: stress informs matching
         let words = seq.map(x => x
@@ -417,6 +478,19 @@ class Similarities {
         return syllables
     }
 
+    /**
+     * Determines single consonant skip penalties within the coda cluster.
+     * Evaluates penalty based on proximity to the nucleus (directional: left/right).
+     * 
+     * Example Input 1: skips(["T"], true)
+     * Example Result 1: [0.7]
+     * 
+     * Example Input 2: skips(["L", "M"], true)
+     * Example Result 2: [-1, -1.7]
+     * 
+     * Example Input 3: skips(["L", "M"], false)
+     * Example Result 3: [0.4, -1.7]
+     */
     // ignores aspirates and semivowels
     skips(coda, rev=false) {
         this.validate()
@@ -429,6 +503,12 @@ class Similarities {
         })
     }
 
+    /**
+     * Builds DP (Needleman-Wunsch) matrix mapping edit pathways between two consonant codas.
+     * 
+     * Example Input: paths(["T"], ["L", "M"], true)
+     * Example Result: [[0, -1, -2.7], [0.7, -0.3, -2]]
+     */
     paths(coda0, coda1, rev=false) {
         if (coda0.length == 0 && coda1.length == 0) return [[0]]
         let skip0 = this.skips(coda0, rev), skip1 = this.skips(coda1, rev);
@@ -448,6 +528,13 @@ class Similarities {
         return dp
     }
 
+    /**
+     * Extracts normalized alignment similarity at designated breaks/endpoints in DP table.
+     * Calculates score as dp[row][col] / Math.max(row, col, 1).
+     * 
+     * Example Input: match([[0, -1, -2.7], [0.7, -0.3, -2]]) (with breaks0=[1], breaks1=[2])
+     * Example Result: -1 (dp[1][2]/2 = -2/2 = -1)
+     */
     match(dp, breaks0, breaks1) {
         breaks0 = breaks0 === undefined ? [dp.length - 1] : breaks0
         breaks1 = breaks1 === undefined ? [dp[0].length - 1] : breaks1
@@ -459,11 +546,23 @@ class Similarities {
         return val
     }
 
+    /**
+     * Returns the maximum normalized alignment similarity overall in a DP table.
+     * 
+     * Example Input: max([[0, -1, -2.7], [0.7, -0.3, -2]])
+     * Example Result: 0.7 (dp[1][0]/1 = 0.7/1 = 0.7)
+     */
     max(dp) {
         return this.match(
             dp, [...Array(dp.length).keys()], [...Array(dp[0].length).keys()])
     }
 
+    /**
+     * Measures similarities over multiple words with dynamic boundaries.
+     * 
+     * Example Input: spaced([["T"]], [["L", "M"]], true)
+     * Example Result: [-1, -1]
+     */
     spaced(codas0, codas1, rev=false) {
         const dir = rev ? x => x.reverse() : x => x
         const dp = this.paths(dir(codas0.flat()), dir(codas1.flat()), rev)
@@ -473,6 +572,25 @@ class Similarities {
             cumsum(dir(codas1.map(x => x.length))))]
     }
 
+    /**
+     * Evaluates total phonetic rhyme similarity score by reversing aligned phoneme tracks
+     * and integrating vowel similarity lookups with optimal coda path DP alignments.
+     * 
+     * Example Trace comparing "battery" (seq0) vs "battle me" (seq1):
+     * - align(seq0): [[["B"]], "AE", [["T"]], "ER", [[]], "IY", [[]]]
+     * - align(seq1): [[["B"]], "AE", [["T"]], "AH", [["L"], ["M"]], "IY", [[]]]
+     * - Reverse alignments (index i runs from 0 to 6):
+     *   - i = 0 (even, codas): [[]] vs [[]] -> dp: [[0]] -> match(dp) = 0, total = 0, max = 0
+     *   - i = 1 (odd, vowels): "IY" vs "IY" -> lookup("IY", "IY") = 2.4 -> total = 2.4, max = 2.4
+     *   - i = 2 (even, codas): [[]] vs [["L"],["M"]] -> dp: [[0,-1.7,-2.7]] -> match(dp) = -1.35 -> total = 1.05, max = 2.4
+     *   - i = 3 (odd, vowels): "ER" vs "AH" -> lookup("ER", "AH") = -0.2 -> total = 0.85, max = 2.4
+     *   - i = 4 (even, codas): [["T"]] vs [["T"]] -> dp: [[0,0.7],[0.7,1.7]] -> match(dp) = 1.7 -> total = 2.55, max = 2.55
+     *   - i = 5 (odd, vowels): "AE" vs "AE" -> lookup("AE", "AE") = 2.1 -> total = 4.65, max = 4.65
+     *   - i = 6 (even, codas): [["B"]] vs [["B"]] -> dp: [[0,-1.5],[-1.5,4.3]] -> match(dp) = 4.3 -> total = 8.95, max = 8.95
+     * 
+     * Example Input: rhyme(["B AE1 T ER0 IY0"], ["B AE1 T AH0 L", "M IY1"])
+     * Example Result: 8.95
+     */
     rhyme(seq0, seq1) {
         const aligned0 = this.align(seq0).reverse(),
             aligned1 = this.align(seq1).reverse();

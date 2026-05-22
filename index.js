@@ -940,7 +940,14 @@ class SumPends {
                 `${res[1]}${" ".repeat(width - (hh + "").length)}${hh})`
     }
 
+    /**
+     * Takes the aligned phonemes being compared and finds the exact similarity score through `this.node.sim`.
+     * If the consonants at the end of the ranges contain a word break, uses `spaced` to allow the matching to stop
+     * either there or at the cutoff for the excluded vowel.
+     */
     refine() {
+        // may need additional changes to spaced to require the main comparison
+        // while enabling bidirectional edge alignments
         // debugger // TODO
     }
 }

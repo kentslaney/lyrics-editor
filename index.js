@@ -558,7 +558,33 @@ class Similarities {
     }
 
     /**
-     * Measures similarities over multiple words with dynamic boundaries.
+     * Measures phonetic similarities over multiple words, comparing a flat global alignment
+     * against a segmented alignment that is constrained to align at word/phrase boundaries.
+     * 
+     * What is happening:
+     * 1. Reversing (Optional): If `rev=true` (useful for reverse-rhyming alignment from word endings),
+     *    individual sub-arrays and their segment order are reversed.
+     * 2. Flattening and DP calculation: The method flattens `codas0` and `codas1` to compute a 
+     *    global dynamic programming alignment matrix (`dp`) between all consonants, temporarily 
+     *    ignoring word splits.
+     * 3. Cumsum Boundary Mapping: `cumsum(...)` calculates the exact ending index of each segment 
+     *    within the flattened sequence (e.g., if segment lengths are `[2, 1, 3]`, their cumulative boundaries
+     *    are `[2, 3, 6]`).
+     * 4. Return Value: It returns two scores:
+     *    - Index 0 (Unconstrained Global Match): The standard alignment score at the final DP cell
+     *      `dp[rows-1][cols-1]` representing how well they align if segment boundaries are fully ignored.
+     *    - Index 1 (Constrained Boundary Match): The highest normalized score among all intersection points 
+     *      of the segment boundaries in the DP matrix. This represents the best match when forced to align 
+     *      strictly at word/syllable transitions.
+     * 
+     * Why it is useful:
+     * - Allows flexible matching where a single long cluster in one phrase can either span across 
+     *   word boundaries in the other phrase (global match) or be forced to align at natural pauses/splits 
+     *   (boundary match).
+     * - In Example 1: `spaced([["T"]], [["L"], ["M"]])`
+     *   - Unconstrained global match: forced to align `"T"` across the entire `"L M"`, incurring heavy skips: `-0.65`.
+     *   - Boundary match: can choose the transition boundary between `"L"` and `"M"`, matching `"T"` directly 
+     *     with `"L"` and ignoring `"M"` for a score of `0.4`.
      * 
      * Example Input 1: spaced([["T"]], [["L"], ["M"]])
      * Example Result 1: [-0.65, 0.4]

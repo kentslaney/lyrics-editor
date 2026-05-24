@@ -456,7 +456,7 @@ class Similarities {
         const [val, arg] = breaks.flat().reduce(([prev, argmax], cur, idx) =>
             cur > prev ? [cur, idx] : [prev, argmax], [-Infinity, NaN])
         const row = Math.trunc(arg / breaks1.length), col = arg % breaks1.length
-        return val
+        return dp[breaks0[row]][breaks1[col]]
     }
 
     max(dp) {

@@ -7,4 +7,5 @@ Try out the demo on [GitHub Pages](https://kentslaney.github.io/lyrics-editor)!
 - pronunciation match UI
 - page breaks while printing
 - change line height while hiding meter
+- [Jeon, 2024](https://github.com/apple/ml-acn-embed)
 

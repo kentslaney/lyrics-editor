@@ -63,6 +63,25 @@ body { --scroll-space: 95dvh; }
     visibility: initial;
 }
 
+.rhymed .background {
+    visibility: initial;
+}
+
+.rhymed:not(.metered) .meter {
+    color: transparent;
+}
+
+.rhymed .syl.rhyme {
+    background: rgb(var(--rhyme) / var(--strength));
+    border-radius: 0.2em;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
+
+#options input[type="range"] {
+    width: 6em;
+}
+
 .double-spaced:focus-within {
     border-color: blue;
 }
@@ -461,6 +480,10 @@ body {
 
     .splittable.split .fold::after {
         background: #fff;
+    }
+
+    .rhymed .syl.rhyme {
+        background: rgb(var(--rhyme-dark) / var(--strength));
     }
 }
 

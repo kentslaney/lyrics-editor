@@ -335,6 +335,71 @@ function cumsum(arr) {
 }
 
 // https://ismir2009.ismir.net/proceedings/OS8-1.pdf
+// CAM16 JCh -> sRGB under sRGB-ish viewing conditions (D65, L_A from a
+// mid-gray L* 50 background, average surround), inverse only
+const cam16 = (() => {
+    const white = [95.047, 100, 108.883]
+    const M16 = [
+        [0.401288, 0.650173, -0.051461],
+        [-0.250268, 1.204414, 0.045854],
+        [-0.002079, 0.048952, 0.953127]]
+    const M16inv = [
+        [1.86206786, -1.01125463, 0.14918677],
+        [0.38752654, 0.62144744, -0.00897398],
+        [-0.0158415, -0.03412294, 1.04996444]]
+    const mul = (M, v) => M.map(r => r[0] * v[0] + r[1] * v[1] + r[2] * v[2])
+    const yb = 100 * ((50 + 16) / 116) ** 3, la = 200 / Math.PI * yb / 100
+    const f = 1, c = 0.69, nc = 1
+    const rgbW = mul(M16, white)
+    const d = Math.min(1, Math.max(0,
+        f * (1 - 1 / 3.6 * Math.exp((-la - 42) / 92))))
+    const rgbD = rgbW.map(x => d * 100 / x + 1 - d)
+    const k = 1 / (5 * la + 1), k4 = k ** 4
+    const fl = k4 * la + 0.1 * (1 - k4) ** 2 * Math.cbrt(5 * la)
+    const n = yb / white[1], z = 1.48 + Math.sqrt(n), nbb = 0.725 / n ** 0.2
+    const rgbA = rgbW.map((x, i) => {
+        const p = (fl * rgbD[i] * x / 100) ** 0.42
+        return 400 * p / (p + 27.13)
+    })
+    const aw = (2 * rgbA[0] + rgbA[1] + 0.05 * rgbA[2]) * nbb
+    const toXyz = (J, C, h) => {
+        const alpha = J === 0 ? 0 : C / Math.sqrt(J / 100)
+        const t = (alpha / (1.64 - 0.29 ** n) ** 0.73) ** (1 / 0.9)
+        const hr = h * Math.PI / 180, sin = Math.sin(hr), cos = Math.cos(hr)
+        const eHue = 0.25 * (Math.cos(hr + 2) + 3.8)
+        const p1 = eHue * 50000 / 13 * nc * nbb
+        const p2 = aw * (J / 100) ** (1 / c / z) / nbb
+        const g = 23 * (p2 + 0.305) * t / (23 * p1 + 11 * t * cos + 108 * t * sin)
+        const a = g * cos, b = g * sin
+        const rgb = [
+            460 * p2 + 451 * a + 288 * b,
+            460 * p2 - 891 * a - 261 * b,
+            460 * p2 - 220 * a - 6300 * b].map((x, i) => {
+                x /= 1403
+                const base = Math.max(0, 27.13 * Math.abs(x) / (400 - Math.abs(x)))
+                return Math.sign(x) * 100 / fl * base ** (1 / 0.42) / rgbD[i]
+            })
+        return mul(M16inv, rgb)
+    }
+    const toSrgb = xyz => mul([
+        [3.2404542, -1.5371385, -0.4985314],
+        [-0.969266, 1.8760108, 0.041556],
+        [0.0556434, -0.2040259, 1.0572252]], xyz.map(x => x / 100))
+    const encode = x => x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055
+    // largest chroma up to C that stays in the sRGB gamut
+    return (J, C, h) => {
+        const inGamut = C => toSrgb(toXyz(J, C, h)).every(
+            x => x >= -1e-4 && x <= 1 + 1e-4)
+        let lo = 0, hi = C
+        if (!inGamut(hi)) for (let i = 0; i < 20; i++) {
+            const mid = (lo + hi) / 2
+            if (inGamut(mid)) lo = mid; else hi = mid
+        } else lo = hi
+        return toSrgb(toXyz(J, lo, h)).map(x =>
+            Math.round(255 * Math.min(1, Math.max(0, encode(x)))))
+    }
+})()
+
 class Similarities {
     constructor() {
         this.load = retrieve("OS8-1.json").then(r => r.json()).then((res => {
@@ -375,6 +440,49 @@ class Similarities {
     get(type, index0, index1) {
         const [lo, hi] = [index0, index1].toSorted((a, b) => a - b)
         return this[type][hi][lo]
+    }
+
+    // vowels placed on the color wheel by a 2D embedding of their
+    // similarities (kernel PCA) so near rhymes get neighboring hues
+    get vowelHues() {
+        if (this._vowelHues) return this._vowelHues
+        this.validate()
+        const names = this.axes.vowels, n = names.length
+        const S = names.map((_, i) => names.map((_, j) => this.get("vowels", i, j)))
+        const mean = S.map(r => r.reduce((a, b) => a + b) / n)
+        const all = mean.reduce((a, b) => a + b) / n
+        const B = S.map((r, i) => r.map((x, j) => x - mean[i] - mean[j] + all))
+        const dot = (u, v) => u.reduce((a, x, i) => a + x * v[i], 0)
+        const axes = []
+        for (let k = 0; k < 2; k++) {
+            let v = B.map((_, i) => Math.cos(i * (k + 1)))
+            for (let it = 0; it < 500; it++) {
+                let w = B.map(r => dot(r, v))
+                for (const u of axes) w = w.map((x, i) => x - dot(w, u) * u[i])
+                const norm = Math.hypot(...w)
+                v = w.map(x => x / norm)
+            }
+            axes.push(v)
+        }
+        const angle = names.map((_, i) => Math.atan2(axes[1][i], axes[0][i]))
+        const rank = [...names.keys()].sort((a, b) => angle[a] - angle[b])
+        return this._vowelHues = Object.fromEntries(
+            rank.map((i, r) => [names[i], r * 360 / n]))
+    }
+
+    // CAM16 hue from the embedding at constant chroma; lightness alternates
+    // so that neighbors on the wheel stay distinguishable
+    palette = {
+        light: { J: [76, 62, 86], C: 60 },
+        dark: { J: [52, 40, 64], C: 50 },
+    }
+    get vowelColors() {
+        if (this._vowelColors) return this._vowelColors
+        const hues = this.vowelHues, names = Object.keys(hues)
+        return this._vowelColors = Object.fromEntries(names.map((v, r) => [v,
+            Object.fromEntries(Object.entries(this.palette).map(
+                ([mode, { J, C }]) => [mode,
+                    cam16(J[r % J.length], C, hues[v]).join(" ")]))]))
     }
 
     lookup(term0, term1) {
@@ -1154,6 +1262,95 @@ async function lcs(seq) {
     return new Suffixes(phonemes).build(bar)
 }
 
+// pairs of multi-syllable spans that sound alike, flattened per syllable
+class Rhymes {
+    // dictionary stress on monosyllables is citation form; in a lyric these
+    // are usually unstressed so they only count as part of a longer match
+    static unstressed = new Set((
+        "a an the to of in on at by for with from up as and or but nor so " +
+        "if than then that this these those is am are was were be been it " +
+        "it's its i i'm i'd i'll me my you you're your he he's him his she " +
+        "her we we're us our they them their what who do does did have has " +
+        "had not no can will would should could just there here").split(" "))
+
+    constructor(pronunciations, words=[]) {
+        this.pronunciations = pronunciations
+        this.owner = []  // vowel index -> [word, syllable in word]
+        this.stressed = []
+        const seq = []
+        pronunciations.forEach((p, i) => {
+            const stress = p?.match(/[012]/g)
+            if (!stress) return
+            seq.push(p)
+            const weak = stress.length === 1 &&
+                Rhymes.unstressed.has(words[i]?.toLowerCase())
+            stress.forEach((d, j) => {
+                this.owner.push([i, j])
+                this.stressed.push(d !== "0" && !weak)
+            })
+        })
+        this.matches = seq.length < 2 ? [] :
+            new Suffixes(phonemes).build(seq).sorted()
+        this.vowels = seq.map(x => x.match(/[A-Z]+(?=[012])/g)).flat()
+    }
+
+    spans(match) {
+        return match.comparing().map(([lo, hi]) => {
+            const res = []
+            for (let i = lo | 1; i < hi; i += 2) {
+                const k = (i - 1) / 2
+                if (k >= 0 && k < this.owner.length) res.push(k)
+            }
+            return res
+        })
+    }
+
+    // a stressed vowel on both sides lines up, and every stressed vowel
+    // lines up with one that's closer than chance
+    assonant(v0, v1) {
+        if (v0.length !== v1.length) return false
+        let anchored = false
+        for (let i = 0; i < v0.length; i++) {
+            const s0 = this.stressed[v0[i]], s1 = this.stressed[v1[i]]
+            if (!s0 && !s1) continue
+            anchored ||= s0 && s1
+            if (phonemes.lookup(this.vowels[v0[i]], this.vowels[v1[i]]) <= 0)
+                return false
+        }
+        return anchored
+    }
+
+    // lineOf: word index -> line number
+    // returns {word: {syllable: [hue, strength, [partner vowel indices]]}}
+    paint(lineOf, threshold, gap) {
+        const best = new Map(), partners = new Map()
+        const colors = phonemes.vowelColors
+        for (const [score, match] of this.matches) {
+            if (score < threshold) break
+            const spans = this.spans(match)
+            if (!this.assonant(...spans)) continue
+            const [a, b] = spans.map(v => [v[0], v.at(-1)].map(
+                k => lineOf[this.owner[k][0]]))
+            if (Math.max(0, b[0] - a[1], a[0] - b[1]) > gap) continue
+            spans.forEach((v, side) => v.forEach(k => {
+                if (!best.has(k)) best.set(k, score)
+                if (!partners.has(k)) partners.set(k, new Set())
+                for (const j of spans[side ^ 1]) partners.get(k).add(j)
+            }))
+        }
+        const res = {}
+        for (const [k, score] of best) {
+            const [word, syl] = this.owner[k]
+            const strength = Math.min(1, 0.6 + 0.4 * (score - threshold) /
+                (2 * threshold))
+            ;(res[word] ??= { pronunciation: this.pronunciations[word] })[syl] =
+                [colors[this.vowels[k]], +strength.toFixed(2),
+                 [...partners.get(k)].map(j => this.owner[j])]
+        }
+        return res
+    }
+}
+
 class Edit {
     constructor(iter0, iter1, n=undefined, m=undefined) {
         this.iter0 = iter0
@@ -1485,10 +1682,65 @@ class DoubleSpaced {
                 const wordish = next.length && !next.match(this.editor.strip)
                 return wordish ? "\xA0\u200B" : "\xA0"
             }).concat([""])
-            this.renderMeter(this.editor.meter.map(
-                (x, i) => [this.meterWord(x, limits[i]), sep[i]]))
+            this.meterWords = this.editor.meter.map(
+                (x, i) => [this.meterWord(x, limits[i]), sep[i]])
+            this.renderMeter(this.meterWords, this.rhymeColors())
             this.resize()
+            this.scheduleRhymes()
         })
+    }
+
+    rhymeOptions = { threshold: 4, gap: 4 }
+    rhymeDebounceMs = 300
+    #rhymes = null
+    #rhymeKey
+    #rhymeTimer
+    #painted = null
+    get rhymed() {
+        return this.wrapper.classList.contains("rhymed")
+    }
+
+    scheduleRhymes(force=false) {
+        if (!this.rhymed) return
+        const prons = this.editor.pronunciations.map(x => x?.[0])
+        const words = this.editor.words
+        const key = JSON.stringify([prons, words])
+        if (key === this.#rhymeKey && !force) return
+        this.#rhymeKey = key
+        let line = 0
+        const lineOf = prons.map((_, i) =>
+            line += i > 0 && this.editor.separators[i - 1] === "\n")
+        window.clearTimeout(this.#rhymeTimer)
+        this.#rhymeTimer = window.setTimeout(async () => {
+            await phonemes.load
+            if (key !== this.#rhymeKey) return
+            this.#rhymes = new Rhymes(prons, words)
+            this.#rhymes.lineOf = lineOf
+            this.repaint()
+        }, this.rhymeDebounceMs)
+    }
+
+    repaint() {
+        if (this.#rhymes === null || this.meterWords === undefined) return
+        const { threshold, gap } = this.rhymeOptions
+        this.#painted = this.#rhymes.paint(this.#rhymes.lineOf, threshold, gap)
+        this.renderMeter(this.meterWords, this.rhymeColors())
+    }
+
+    // drops stale entries where the word or its meter changed since painting
+    rhymeColors() {
+        if (this.#painted === null || !this.rhymed) return null
+        const prons = this.editor.pronunciations, meter = this.editor.meter
+        const res = {}
+        for (const [i, { pronunciation, ...syls }] of
+                Object.entries(this.#painted)) {
+            if (prons[i]?.[0] !== pronunciation) continue
+            if (meter[i]?.length !== pronunciation.match(/[012]/g).length)
+                continue
+            res[i] = Object.fromEntries(Object.entries(syls).map(
+                ([j, [tint, strength]]) => [j, [tint, strength]]))
+        }
+        return res
     }
 
     // [[text, syllable index | null]...] with the whitespace between two
@@ -1527,6 +1779,7 @@ class DoubleSpaced {
 
     #meterKey
     renderMeter(words, colors=null) {
+        if (words === undefined) return
         const key = JSON.stringify([words, colors])
         if (key === this.#meterKey) return
         this.#meterKey = key
@@ -1545,7 +1798,8 @@ class DoubleSpaced {
                 const color = colors?.[i]?.[syl]
                 if (color) {
                     el.classList.add("rhyme")
-                    el.style.setProperty("--hue", color[0])
+                    el.style.setProperty("--rhyme", color[0].light)
+                    el.style.setProperty("--rhyme-dark", color[0].dark)
                     el.style.setProperty("--strength", color[1])
                 }
             }
@@ -1984,5 +2238,22 @@ if (isNode) {
         storedBool("pronunciations", pre, "splittable", true)
         storedBool("syllable-counts", pre, "counted", false)
         storedBool("meter", pre, "metered", true)
+        storedBool("rhymes", pre, "rhymed", true)
+        document.getElementById("rhymes").addEventListener("change", () => {
+            ed.scheduleRhymes(true)
+            ed.renderMeter(ed.meterWords, ed.rhymeColors())
+        })
+        for (const [id, key] of [
+                ["rhyme-threshold", "threshold"], ["rhyme-gap", "gap"]]) {
+            const el = document.getElementById(id)
+            if (id in window.localStorage) el.value = window.localStorage[id]
+            const f = () => {
+                window.localStorage[id] = el.value
+                ed.rhymeOptions[key] = parseFloat(el.value)
+                el.title = el.value
+            }
+            f()
+            el.addEventListener("input", () => { f(); ed.repaint() })
+        }
     })
 }

@@ -38,8 +38,12 @@ body { --scroll-space: 95dvh; }
     height: var(--input-height);
 }
 
-.background::before {
-    content: attr(data-meter)
+.meter {
+    display: inline;
+}
+
+.meter-post {
+    display: none;
 }
 
 .background-case {
@@ -191,7 +195,7 @@ body {
     min-height: calc(var(--line-space) * 1em); /* covers extra line of input */
 }
 
-.splittable.split .background::before {
+.splittable.split .meter-pre {
     position: absolute;
     overflow: hidden;
     height: var(--offset);
@@ -200,8 +204,7 @@ body {
     left: var(--pad-left);
 }
 
-.splittable.split .background::after {
-    content: attr(data-meter);
+.splittable.split .meter-post {
     display: block;
     margin-top: calc(-1 * var(--offset));
     pointer-events: none;

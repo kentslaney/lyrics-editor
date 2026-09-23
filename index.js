@@ -1485,22 +1485,84 @@ class DoubleSpaced {
                 const wordish = next.length && !next.match(this.editor.strip)
                 return wordish ? "\xA0\u200B" : "\xA0"
             }).concat([""])
-            this.background.setAttribute("data-meter", this.editor.meter.map(
-                    (x, i) => {
-                const whitespace = limits[i] - x.length
-                const lo = Math.trunc(whitespace / (x.length + 1))
-                const wide = whitespace % (x.length + 1)
-                const res = x.split('').map((y, j) => {
-                    return y + this.fill.repeat(lo + (j < wide))
-                }).join('')
-                const word = this.fill.repeat(lo) + res
-                // "w" breaks this
-                // console.assert(x.length <= limits[i])
-                const cutoff = word.slice(0, limits[i])
-                return cutoff.padStart(limits[i]) + sep[i]
-            }).join(""))
+            this.renderMeter(this.editor.meter.map(
+                (x, i) => [this.meterWord(x, limits[i]), sep[i]]))
             this.resize()
         })
+    }
+
+    // [[text, syllable index | null]...] with the whitespace between two
+    // stress marks split evenly so each syllable's span covers its share of
+    // the word's width
+    meterWord(x, limit) {
+        const whitespace = limit - x.length
+        const lo = Math.trunc(whitespace / (x.length + 1))
+        const wide = whitespace % (x.length + 1)
+        const owners = [], chars = []
+        const gap = (n, before, after) => {
+            for (let k = 0; k < n; k++) {
+                chars.push(this.fill)
+                owners.push(k < (before === null ? 0 :
+                    after === null ? n : Math.floor(n / 2)) ? before : after)
+            }
+        }
+        const n = x.length
+        gap(lo, null, n ? 0 : null)
+        x.split('').forEach((y, j) => {
+            chars.push(y)
+            owners.push(j)
+            gap(lo + (j < wide), j, j + 1 < n ? j + 1 : null)
+        })
+        // "w" breaks this
+        // console.assert(x.length <= limit)
+        chars.splice(limit)
+        owners.splice(limit)
+        const res = []
+        chars.forEach((c, k) => {
+            if (k && owners[k] === owners[k - 1]) res[res.length - 1][0] += c
+            else res.push([c, owners[k]])
+        })
+        return res
+    }
+
+    #meterKey
+    renderMeter(words, colors=null) {
+        const key = JSON.stringify([words, colors])
+        if (key === this.#meterKey) return
+        this.#meterKey = key
+        const frag = document.createDocumentFragment()
+        words.forEach(([segs, sep], i) => {
+            for (const [text, syl] of segs) {
+                if (syl === null) {
+                    frag.appendChild(document.createTextNode(text))
+                    continue
+                }
+                const el = frag.appendChild(document.createElement("span"))
+                el.textContent = text
+                el.className = "syl"
+                el.dataset.word = i
+                el.dataset.syl = syl
+                const color = colors?.[i]?.[syl]
+                if (color) {
+                    el.classList.add("rhyme")
+                    el.style.setProperty("--hue", color[0])
+                    el.style.setProperty("--strength", color[1])
+                }
+            }
+            if (sep) frag.appendChild(document.createTextNode(sep))
+        })
+        const [pre, post] = this.meters
+        pre.replaceChildren(frag)
+        post.replaceChildren(...pre.cloneNode(true).childNodes)
+    }
+
+    get meters() {
+        if (this.background.children.length < 2) {
+            for (const cls of ["meter-pre", "meter-post"])
+                this.background.appendChild(document.createElement("div"))
+                    .classList.add("meter", cls)
+        }
+        return this.background.getElementsByClassName("meter")
     }
 
     firstFocus() {

@@ -761,8 +761,8 @@ class SumPends {
     }
 
     comparing() {
-        const [lo, hi] = this.rooted
-        const syllables = this.node.path.length * 2 - this.node.offset - 2
+        const [lo, hi] = this.rooted.map(x => x + 2 * !this.node.parentless)
+        const syllables = this.node.path.length * 2 - this.node.offset
         return [
             [lo - syllables, lo + this.offset],
             [hi - syllables, hi + this.offset]]
@@ -813,7 +813,7 @@ class PrefixPair extends SumPends {
         super()
         this.node = node
         this.vowel = source
-        this.ref = pair
+        this.ref = parent
         this.pair = JSON.stringify(pair)
         this.parent = JSON.stringify(parent)
     }
@@ -1855,7 +1855,8 @@ lcs(phonePhrase).then(tree => {
     console.log("" + phonePhrase + tree)
     console.log(tree.indices())
     const ordered = tree.sorted()
-    for (const i of [24, 10, 66]) {
+    // for (const i of [24, 10, 66]) {
+    for (let i = 0; i < ordered.length; i++) {
         const [score, summable] = ordered[i]
         console.log(score.toFixed(1), summable + "\n", summable)
         console.log(ordered[i][1].refine())

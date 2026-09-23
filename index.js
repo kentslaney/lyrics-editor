@@ -1685,6 +1685,7 @@ class DoubleSpaced {
             this.meterWords = this.editor.meter.map(
                 (x, i) => [this.meterWord(x, limits[i]), sep[i]])
             this.renderMeter(this.meterWords, this.rhymeColors())
+            this.focusRhymes()
             this.resize()
             this.scheduleRhymes()
         })
@@ -1725,6 +1726,41 @@ class DoubleSpaced {
         const { threshold, gap } = this.rhymeOptions
         this.#painted = this.#rhymes.paint(this.#rhymes.lineOf, threshold, gap)
         this.renderMeter(this.meterWords, this.rhymeColors())
+        this.focusRhymes()
+    }
+
+    // word under the caret, or null when it's elsewhere
+    get caretWord() {
+        if (document.activeElement !== this.foreground) return null
+        const offset = this.foreground.selectionEnd, raw = this.editor.raw
+        for (let i = 0, pos = 0; i < raw.length; i++) {
+            if (offset <= pos + raw[i].length) return offset < pos ? null : i
+            pos += raw[i].length + 1
+        }
+        return null
+    }
+
+    // outlines the caret word's rhyme partners and dims the other colors
+    focusRhymes() {
+        for (const el of this.background.querySelectorAll(
+                ".rhyme-source, .rhyme-partner"))
+            el.classList.remove("rhyme-source", "rhyme-partner")
+        const word = this.caretWord, colors = this.rhymeColors()
+        const painted = word === null ? undefined : this.#painted?.[word]
+        const focused = colors?.[word] !== undefined && painted !== undefined
+        this.wrapper.classList.toggle("rhyme-focus", focused)
+        if (!focused) return
+        const mark = (w, j, cls) => {
+            if (colors[w]?.[j] === undefined) return
+            for (const el of this.background.querySelectorAll(
+                    `.syl[data-word="${w}"][data-syl="${j}"]`))
+                el.classList.add(cls)
+        }
+        for (const [j, [, , partners]] of Object.entries(painted)) {
+            if (j === "pronunciation") continue
+            mark(word, j, "rhyme-source")
+            for (const [w, k] of partners) mark(w, k, "rhyme-partner")
+        }
     }
 
     // drops stale entries where the word or its meter changed since painting
@@ -1885,7 +1921,10 @@ class DoubleSpaced {
                 this.#selectionEnd = next
             }
         }).bind(this)
-        el.addEventListener('blur', () => { this.#selectionEnd = -1 });
+        el.addEventListener('blur', () => {
+            this.#selectionEnd = -1
+            this.focusRhymes?.()
+        });
         el.addEventListener('keydown', check);
         el.addEventListener('keypress', check);
         el.addEventListener('keyup', check);

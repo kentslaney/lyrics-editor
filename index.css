@@ -78,6 +78,18 @@ body { --scroll-space: 95dvh; }
     -webkit-print-color-adjust: exact;
 }
 
+.rhymed.rhyme-focus .syl.rhyme:not(.rhyme-source, .rhyme-partner) {
+    background: rgb(var(--rhyme) / calc(var(--strength) * 0.25));
+}
+
+.rhymed .syl.rhyme-partner, .rhymed .syl.rhyme-source {
+    outline: 1px solid currentColor;
+}
+
+.rhymed .syl.rhyme-source {
+    outline-width: 2px;
+}
+
 #options input[type="range"] {
     width: 6em;
 }
@@ -484,6 +496,10 @@ body {
 
     .rhymed .syl.rhyme {
         background: rgb(var(--rhyme-dark) / var(--strength));
+    }
+
+    .rhymed.rhyme-focus .syl.rhyme:not(.rhyme-source, .rhyme-partner) {
+        background: rgb(var(--rhyme-dark) / calc(var(--strength) * 0.25));
     }
 }
 
